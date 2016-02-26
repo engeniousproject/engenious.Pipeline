@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{9771E0FC-D752-4D7A-89E4-4F6FA2EC3C1D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>engenious.Pipeline</RootNamespace>
+    <AssemblyName>engenious.Pipeline</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Externalconsole>true</Externalconsole>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>full</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Externalconsole>true</Externalconsole>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml" />
+    <Reference Include="OpenTK">
+      <HintPath>..\packages\OpenTK.1.1.2225.0\lib\net20\OpenTK.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Pipeline\IContentImporter.cs" />
+    <Compile Include="Pipeline\ContentContext.cs" />
+    <Compile Include="Pipeline\ContentImporter.cs" />
+    <Compile Include="Pipeline\IContentProcessor.cs" />
+    <Compile Include="Pipeline\ContentProcessor.cs" />
+    <Compile Include="Serialization\ContentTypeWriter.cs" />
+    <Compile Include="Serialization\ContentWriter.cs" />
+    <Compile Include="Serialization\ContentTypeWriterAttribute.cs" />
+    <Compile Include="Serialization\IContentTypeWriter.cs" />
+    <Compile Include="Serialization\SerializationManager.cs" />
+    <Compile Include="Serialization\Writer\SpriteFontTypeWriter.cs" />
+    <Compile Include="Pipeline\Processor\FontProcessor.cs" />
+    <Compile Include="Pipeline\ContentImporterContext.cs" />
+    <Compile Include="Pipeline\ContentProcessorContext.cs" />
+    <Compile Include="Pipeline\Importers\FontImporter.cs" />
+    <Compile Include="Pipeline\Importers\BitmapImporter.cs" />
+    <Compile Include="Pipeline\Attributes\ContentImporterAttribute.cs" />
+    <Compile Include="Pipeline\Attributes\ContentProcessorAttribute.cs" />
+    <Compile Include="Pipeline\Attributes\AttributeHelper.cs" />
+    <Compile Include="Pipeline\Importers\EffectImporter.cs" />
+    <Compile Include="Pipeline\Processor\EffectProcessor.cs" />
+    <Compile Include="Pipeline\Processor\PassthroughProcessor.cs" />
+    <Compile Include="Serialization\Writer\BitmapTypeWriter.cs" />
+    <Compile Include="Serialization\Writer\RenderStateWriters.cs" />
+    <Compile Include="Serialization\Writer\EffectTypeWriter.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Folder Include="Pipeline\" />
+    <Folder Include="Serialization\" />
+    <Folder Include="Pipeline\Importers\" />
+    <Folder Include="Pipeline\Processor\" />
+    <Folder Include="Pipeline\Attributes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="OpenTK.dll.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\engenious\engenious.csproj">
+      <Project>{E1FF7BDB-D631-4D4D-B5A1-988778AD15B6}</Project>
+      <Name>engenious</Name>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
