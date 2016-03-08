@@ -13,7 +13,7 @@ namespace engenious.Content.Pipeline
         {
             this.WorkingDirectory = workingDirectory;
             window = new GameWindow();
-            ThreadingHelper.Initialize(window.WindowInfo);
+            ThreadingHelper.Initialize(window.WindowInfo,3,1,GraphicsContextFlags.Debug);
             GraphicsDevice = new GraphicsDevice(window.Context);
 
         }

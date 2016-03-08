@@ -288,12 +288,12 @@ namespace engenious.Content.Pipeline
                         }
                         else if (sh.Name == "Attributes")
                         {
-                            foreach (XmlElement attr in pass.ChildNodes.OfType<XmlElement>())
+                            foreach (XmlElement attr in sh.ChildNodes.OfType<XmlElement>())
                             {
                                 if (attr.Name == "attribute")
                                 {
-                                    VertexElementUsage usage = (VertexElementUsage)Enum.Parse(typeof(VertexElementUsage), attr.GetAttribute("usage"));
-                                    string nm = sh.GetAttribute("name");
+                                    VertexElementUsage usage = (VertexElementUsage)Enum.Parse(typeof(VertexElementUsage), attr.InnerText);
+                                    string nm = attr.GetAttribute("name");
                                     if (nm.Length < 1)
                                         throw new Exception("Not a valid attribute name'" + nm + "'");
                                     pi.Attributes.Add(usage, nm);
