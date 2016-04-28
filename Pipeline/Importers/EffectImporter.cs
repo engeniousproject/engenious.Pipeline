@@ -220,7 +220,7 @@ namespace engenious.Content.Pipeline
             foreach (XmlElement el in element.ChildNodes.OfType<XmlElement>())
             {
                 if (el.Name == "CullMode")
-                    rasterizerState.CullMode = (CullFaceMode)Enum.Parse(typeof(CullFaceMode), el.InnerText);
+                    rasterizerState.CullMode = (CullMode)Enum.Parse(typeof(CullMode), el.InnerText);
                 else if (el.Name == "FillMode")
                     rasterizerState.FillMode = (PolygonMode)Enum.Parse(typeof(PolygonMode), el.InnerText);
                 else if (el.Name == "MultiSampleAntiAlias")
