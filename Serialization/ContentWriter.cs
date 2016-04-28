@@ -46,6 +46,32 @@ namespace engenious.Content.Serialization
             buffered.Dispose();
         }
 
+        public void Write(engenious.Graphics.VertexPositionNormalTexture v)
+        {
+            Write(v.Position);
+            Write(v.Normal);
+            Write(v.TextureCoordinate);
+        }
+
+        public void Write(engenious.Graphics.VertexPositionColor v)
+        {
+            Write(v.Position);
+            Write(v.Color);
+        }
+
+        public void Write(engenious.Graphics.VertexPositionColorTexture v)
+        {
+            Write(v.Position);
+            Write(v.Color);
+            Write(v.TextureCoordinate);
+        }
+
+        public void Write(engenious.Graphics.VertexPositionTexture v)
+        {
+            Write(v.Position);
+            Write(v.TextureCoordinate);
+        }
+
         public void Write(Matrix matrix)
         {
             Write(matrix.Row0);//TODO: perhaps better saving per Column?
