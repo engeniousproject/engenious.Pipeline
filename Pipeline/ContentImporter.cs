@@ -7,6 +7,15 @@ namespace engenious.Content.Pipeline
 		public ContentImporter ()
 		{
 		}
+        private static Type exportType=null;
+        public static Type ExportType {
+            get
+            {
+                if (exportType == null)
+                    exportType = typeof(T);
+                return exportType;
+            }
+        }
 
 		public abstract T Import (string filename, ContentImporterContext context);
 
