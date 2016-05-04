@@ -44,9 +44,7 @@ namespace engenious.Pipeline
         {
             try
             {
-                return;
                 string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                System.Diagnostics.Debug.WriteLine("test asdf");
                 string ext = ".dll";
                 switch (RunningPlatform())
                 {
