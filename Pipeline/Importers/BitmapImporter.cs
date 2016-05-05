@@ -12,9 +12,17 @@ namespace engenious.Content.Pipeline
 
         public override Bitmap Import(string filename, ContentImporterContext context)
         {
-            if (!System.IO.File.Exists(filename))
-                return null;
-            return new Bitmap(filename);
+            //if (!System.IO.File.Exists(filename))
+            //    return null;
+            try
+            {
+                return new Bitmap(filename);
+            }
+            catch (Exception ex)
+            {
+                context.RaiseBuildMessage(filename ,  ex.Message, BuildMessageEventArgs.BuildMessageType.Error);
+            }
+            return null;
         }
     }
 }

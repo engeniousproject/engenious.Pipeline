@@ -5,7 +5,7 @@ using OpenTK.Graphics;
 
 namespace engenious.Content.Pipeline
 {
-    public class ContentProcessorContext:IDisposable
+    public class ContentProcessorContext: ContentContext
     {
         private GameWindow window;
 
@@ -22,8 +22,9 @@ namespace engenious.Content.Pipeline
 
         public string WorkingDirectory{ get; private set; }
 
-        public void Dispose()
+        public override void Dispose()
         {
+            GraphicsDevice.Dispose();
             window.Dispose();
         }
     }

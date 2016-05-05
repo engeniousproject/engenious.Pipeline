@@ -29,6 +29,8 @@
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Pipeline\BuildMessageEventArgs.cs" />
+    <Compile Include="Pipeline\IContentContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Pipeline\IContentImporter.cs" />
     <Compile Include="Pipeline\ContentContext.cs" />

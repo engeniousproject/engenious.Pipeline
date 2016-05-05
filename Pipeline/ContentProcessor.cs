@@ -28,11 +28,11 @@ namespace engenious.Content.Pipeline
             }
         }
 
-        public abstract TOutput Process(TInput input, ContentProcessorContext context);
+        public abstract TOutput Process(TInput input,string filename, ContentProcessorContext context);
 
-        object IContentProcessor.Process(object input, ContentProcessorContext context)
+        object IContentProcessor.Process(object input, string filename, ContentProcessorContext context)
         {
-            return Process((TInput)input, context);
+            return Process((TInput)input,filename, context);
         }
     }
 }

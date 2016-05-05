@@ -12,7 +12,7 @@ namespace engenious.Pipeline
 
         #region implemented abstract members of ContentProcessor
 
-        public override object Process(object input, ContentProcessorContext context)
+        public override object Process(object input, string filename, ContentProcessorContext context)
         {
             return input;
         }

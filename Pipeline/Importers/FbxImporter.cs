@@ -74,9 +74,18 @@ namespace engenious.Pipeline
         public override Assimp.Scene Import(string filename, ContentImporterContext context)
         {
             if (dllLoadExc != null)
-                throw dllLoadExc;
-            Assimp.AssimpContext c = new Assimp.AssimpContext();
-            return c.ImportFile(filename);
+                context.RaiseBuildMessage("FBXIMPORT" , dllLoadExc.Message, BuildMessageEventArgs.BuildMessageType.Error);
+            try
+            {
+
+                Assimp.AssimpContext c = new Assimp.AssimpContext();
+                return c.ImportFile(filename);
+            }
+            catch (Exception ex)
+            {
+                context.RaiseBuildMessage(filename , ex.Message, BuildMessageEventArgs.BuildMessageType.Error);
+            }
+            return null;
         }
     }
 }

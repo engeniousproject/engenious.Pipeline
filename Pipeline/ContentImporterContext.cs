@@ -1,14 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace engenious.Content.Pipeline
 {
-    public class ContentImporterContext : IDisposable
+    public class ContentImporterContext : ContentContext
     {
         public ContentImporterContext()
         {
         }
-
-        public void Dispose()
+        
+        public override void Dispose()
         {
         }
     }

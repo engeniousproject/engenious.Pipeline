@@ -242,75 +242,83 @@ namespace engenious.Content.Pipeline
 
         public override EffectContent Import(string filename, ContentImporterContext context)
         {
-            EffectContent content = new EffectContent();
+            try
+            {
+                EffectContent content = new EffectContent();
 
-            XmlDocument doc = new XmlDocument();
-            doc.Load(filename);
-            XmlElement effectElement;
-            XmlNode current = doc.FirstChild;
-            while (current != null && current.NodeType != XmlNodeType.Element)
-            {
-                current = current.NextSibling;
-            }
-            effectElement = (XmlElement)current;
-            foreach (XmlElement technique in effectElement.ChildNodes.OfType<XmlElement>())
-            {
-                EffectTechnique info = new EffectTechnique();
-                info.Name = technique.GetAttribute("name");
-                foreach (XmlElement pass in technique.ChildNodes.OfType<XmlElement>())
+                XmlDocument doc = new XmlDocument();
+                doc.Load(filename);
+                XmlElement effectElement;
+                XmlNode current = doc.FirstChild;
+                while (current != null && current.NodeType != XmlNodeType.Element)
                 {
-                    EffectPass pi = new EffectPass();
-                    pi.Name = pass.GetAttribute("name");
-                    foreach (XmlElement sh in pass.ChildNodes.OfType<XmlElement>())
+                    current = current.NextSibling;
+                }
+                effectElement = (XmlElement)current;
+                foreach (XmlElement technique in effectElement.ChildNodes.OfType<XmlElement>())
+                {
+                    EffectTechnique info = new EffectTechnique();
+                    info.Name = technique.GetAttribute("name");
+                    foreach (XmlElement pass in technique.ChildNodes.OfType<XmlElement>())
                     {
-                        if (sh.Name == "Shader")
+                        EffectPass pi = new EffectPass();
+                        pi.Name = pass.GetAttribute("name");
+                        foreach (XmlElement sh in pass.ChildNodes.OfType<XmlElement>())
                         {
-                            ShaderType type = parseShaderType(sh.GetAttribute("type"));
-                            if ((int)type == -1)
-                                throw new Exception("Unsupported Shader type detected");
-                            string shaderFile = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(filename), sh.GetAttribute("filename"));
-                            pi.Shaders.Add(type, System.IO.File.ReadAllText(shaderFile));
-                            //TODO: dependencies content.Dependencies.Add(pi.psFileName);
-
-                        }
-                        else if (sh.Name == "BlendState")
-                        {
-                            pi.BlendState = ParseBlendState(sh);
-
-                        }
-                        else if (sh.Name == "DepthStencilState")
-                        {
-                            pi.DepthStencilState = ParseDepthStencilState(sh);
-                        }
-                        else if (sh.Name == "RasterizerState")
-                        {
-                            pi.RasterizerState = ParseRasterizerState(sh);
-                        }
-                        else if (sh.Name == "Attributes")
-                        {
-                            foreach (XmlElement attr in sh.ChildNodes.OfType<XmlElement>())
+                            if (sh.Name == "Shader")
                             {
-                                if (attr.Name == "attribute")
+                                ShaderType type = parseShaderType(sh.GetAttribute("type"));
+                                if ((int)type == -1)
+                                    throw new Exception("Unsupported Shader type detected");
+                                string shaderFile = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(filename), sh.GetAttribute("filename"));
+                                pi.Shaders.Add(type, shaderFile);
+                                //TODO: dependencies content.Dependencies.Add(pi.psFileName);
+
+                            }
+                            else if (sh.Name == "BlendState")
+                            {
+                                pi.BlendState = ParseBlendState(sh);
+
+                            }
+                            else if (sh.Name == "DepthStencilState")
+                            {
+                                pi.DepthStencilState = ParseDepthStencilState(sh);
+                            }
+                            else if (sh.Name == "RasterizerState")
+                            {
+                                pi.RasterizerState = ParseRasterizerState(sh);
+                            }
+                            else if (sh.Name == "Attributes")
+                            {
+                                foreach (XmlElement attr in sh.ChildNodes.OfType<XmlElement>())
                                 {
-                                    VertexElementUsage usage = (VertexElementUsage)Enum.Parse(typeof(VertexElementUsage), attr.InnerText);
-                                    string nm = attr.GetAttribute("name");
-                                    if (nm.Length < 1)
-                                        throw new Exception("Not a valid attribute name'" + nm + "'");
-                                    pi.Attributes.Add(usage, nm);
+                                    if (attr.Name == "attribute")
+                                    {
+                                        VertexElementUsage usage = (VertexElementUsage)Enum.Parse(typeof(VertexElementUsage), attr.InnerText);
+                                        string nm = attr.GetAttribute("name");
+                                        if (nm.Length < 1)
+                                            throw new Exception("Not a valid attribute name'" + nm + "'");
+                                        pi.Attributes.Add(usage, nm);
+                                    }
                                 }
                             }
+                            else
+                            {
+                                throw new Exception("'" + sh.Name + "' element not recognized");
+                            }
                         }
-                        else
-                        {
-                            throw new Exception("'" + sh.Name + "' element not recognized");
-                        }
+                        info.Passes.Add(pi);
                     }
-                    info.Passes.Add(pi);
+                    content.Techniques.Add(info);
                 }
-                content.Techniques.Add(info);
-            }
 
-            return content;
+                return content;
+            }
+            catch (Exception ex)
+            {
+                context.RaiseBuildMessage(filename, ex.Message, BuildMessageEventArgs.BuildMessageType.Error);
+            }
+            return null;
         }
 
         #endregion
@@ -337,7 +345,6 @@ namespace engenious.Content.Pipeline
 
         public List<EffectPass> Passes{ get; private set; }
     }
-
     public class EffectPass
     {
         public EffectPass()
