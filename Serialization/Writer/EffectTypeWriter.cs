@@ -31,7 +31,7 @@ namespace engenious.Content.Serialization
                     foreach (var shader in pass.Shaders)
                     {
                         writer.Write((ushort)shader.Key);
-                        writer.Write(shader.Value);
+                        writer.Write(System.IO.File.ReadAllText(shader.Value));
                     }
 
                     writer.Write((byte)pass.Attributes.Count);
