@@ -16,15 +16,22 @@ namespace engenious.Content.Pipeline
             string[] lines = msg.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < lines.Length; i++)
             {
-                lines[i] = lines[i].Substring("ERROR: 0:".Length);
-                int eInd = lines[i].IndexOf(':');
-                string errorLoc = "";
-                if (eInd != -1)
+                if (lines[i].StartsWith("error:", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    errorLoc = "(" + lines[i].Substring(0, eInd) + ")";
-                    lines[i] = lines[i].Substring(eInd+1);
+                    lines[i] = lines[i].Substring("ERROR: 0:".Length);
+                    int eInd = lines[i].IndexOf(':');
+                    string errorLoc = "";
+                    if (eInd != -1)
+                    {
+                        errorLoc = "(" + lines[i].Substring(0, eInd) + ")";
+                        lines[i] = lines[i].Substring(eInd + 1);
+                    }
+                    lines[i] = errorLoc + ":ERROR:" + lines[i];
                 }
-                lines[i] = errorLoc + ":ERROR:" + lines[i];
+                else
+                {
+
+                }
                 context.RaiseBuildMessage(file,lines[i],messageType);
             }
 
