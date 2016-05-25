@@ -15,7 +15,7 @@ namespace engenious.Content.Pipeline
 
         internal Dictionary<int, int> kernings;
         internal Dictionary<char, FontCharacter> characterMap;
-        internal System.Drawing.Bitmap texture;
+        internal TextureContent texture;
 
         public Nullable<char> DefaultCharacter { get; set; }
 
@@ -38,7 +38,11 @@ namespace engenious.Content.Pipeline
             try
             {
                 CompiledSpriteFont font = new CompiledSpriteFont();
-                font.texture = new System.Drawing.Bitmap(input.TextureFile);
+                var text = new System.Drawing.Bitmap(input.TextureFile);
+                var textData = text.LockBits(new System.Drawing.Rectangle(0,0,text.Width,text.Height),System.Drawing.Imaging.ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                font.texture = new TextureContent(false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+                text.UnlockBits(textData);  
+                text.Dispose();
 
                 string[] lines = input.Content.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 

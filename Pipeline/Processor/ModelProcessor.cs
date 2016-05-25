@@ -3,11 +3,12 @@ using engenious.Content.Pipeline;
 using engenious.Graphics;
 using System.Collections.Generic;
 using System.Linq;
+using System.ComponentModel;
 
 namespace engenious.Pipeline
 {
     [ContentProcessor(DisplayName = "Model Processor")]
-    public class ModelProcessor : ContentProcessor<Assimp.Scene, ModelContent>
+    public class ModelProcessor : ContentProcessor<Assimp.Scene, ModelContent,ModelProcessorSettings>
     {
         public ModelProcessor()
         {
@@ -45,6 +46,7 @@ namespace engenious.Pipeline
             {
                 ModelContent content = new ModelContent();
                 content.Meshes = new MeshContent[scene.MeshCount];
+                Matrix matrix= Matrix.CreateScaling(settings.Scale)*Matrix.CreateTranslation(settings.Translate);
                 for (int meshIndex = 0; meshIndex < scene.MeshCount; meshIndex++)
                 {
                     var sceneMesh = scene.Meshes[meshIndex];
@@ -59,7 +61,7 @@ namespace engenious.Pipeline
                         var tex = sceneMesh.TextureCoordinateChannels[0][i];
 
                         meshContent.Vertices[i] = new VertexPositionNormalTexture(
-                            new Vector3(pos.X, pos.Y, pos.Z),
+                            Vector3.Transform(new Vector3(pos.X, pos.Y, pos.Z),matrix),
                             new Vector3(norm.X, norm.Y, norm.Z),
                             new Vector2(tex.X, -tex.Y));
                     }
@@ -68,51 +70,43 @@ namespace engenious.Pipeline
                 }
                 content.Nodes = new List<NodeContent>();
                 content.RootNode = ParseNode(content, scene.RootNode);
-                content.Animation = new AnimationContent();
+                content.Animations = new List<AnimationContent>();
 
-                content.Animation.Channels = new List<AnimationNodeContent>();
-                float maxTime = 0;
-                foreach (var channel in scene.Animations[0].NodeAnimationChannels)
-                {
-                    AnimationNodeContent node = new AnimationNodeContent();
-                    var curNode = content.Nodes.First(n => n.Name == channel.NodeName);
-                    node.Node = curNode;
-                    node.Frames = new List<AnimationFrame>();
-                    for (int i = 0; i < Math.Max(Math.Max(channel.PositionKeyCount, channel.RotationKeyCount), channel.ScalingKeyCount); i++)
+                foreach(var animation in scene.Animations){
+                    var anim = new AnimationContent();
+                    anim.Channels = new List<AnimationNodeContent>();
+                    float maxTime = 0;
+                    foreach (var channel in animation.NodeAnimationChannels)
                     {
-                        AnimationFrame frame = new AnimationFrame();
+                        AnimationNodeContent node = new AnimationNodeContent();
+                        var curNode = content.Nodes.First(n => n.Name == channel.NodeName);
+                        node.Node = curNode;
+                        node.Frames = new List<AnimationFrame>();
+                        for (int i = 0; i < Math.Max(Math.Max(channel.PositionKeyCount, channel.RotationKeyCount), channel.ScalingKeyCount); i++)
+                        {
+                            AnimationFrame frame = new AnimationFrame();
 
-                        if (i < channel.PositionKeyCount)
-                            frame.Frame = (float)channel.PositionKeys[i].Time;
-                        else if (i < channel.RotationKeyCount)
-                            frame.Frame = (float)channel.RotationKeys[i].Time;
-                        else if (i < channel.ScalingKeyCount)
-                            frame.Frame = (float)channel.ScalingKeys[i].Time;
-                        maxTime = Math.Max(frame.Frame, maxTime);
-                        //TODO: interpolation
-                        var rot = channel.RotationKeyCount == 0 ? new Assimp.Quaternion(1, 0, 0, 0) : i >= channel.RotationKeyCount ? channel.RotationKeys.Last().Value : channel.RotationKeys[i].Value;
-                        var loc = channel.PositionKeyCount == 0 ? new Assimp.Vector3D() : i >= channel.PositionKeyCount ? channel.PositionKeys.Last().Value : channel.PositionKeys[i].Value;
-                        var sca = channel.ScalingKeyCount == 0 ? new Assimp.Vector3D(1, 1, 1) : i >= channel.ScalingKeyCount ? channel.ScalingKeys.Last().Value : channel.ScalingKeys[i].Value;
-                        rot.Normalize();
+                            if (i < channel.PositionKeyCount)
+                                frame.Frame = (float)channel.PositionKeys[i].Time;
+                            else if (i < channel.RotationKeyCount)
+                                frame.Frame = (float)channel.RotationKeys[i].Time;
+                            else if (i < channel.ScalingKeyCount)
+                                frame.Frame = (float)channel.ScalingKeys[i].Time;
+                            frame.Frame = (float)(frame.Frame / animation.TicksPerSecond);
+                            maxTime = Math.Max(frame.Frame, maxTime);
+                            //TODO: interpolation
+                            var rot = channel.RotationKeyCount == 0 ? new Assimp.Quaternion(1, 0, 0, 0) : i >= channel.RotationKeyCount ? channel.RotationKeys.Last().Value : channel.RotationKeys[i].Value;
+                            var loc = channel.PositionKeyCount == 0 ? new Assimp.Vector3D() : i >= channel.PositionKeyCount ? channel.PositionKeys.Last().Value : channel.PositionKeys[i].Value;
+                            var sca = channel.ScalingKeyCount == 0 ? new Assimp.Vector3D(1, 1, 1) : i >= channel.ScalingKeyCount ? channel.ScalingKeys.Last().Value : channel.ScalingKeys[i].Value;
+                            rot.Normalize();
 
-                        Matrix res = Matrix.CreateFromQuaternion(rot.X, rot.Y, rot.Z, rot.W);
-                        res.M11 *= sca.X;
-                        res.M12 *= sca.X;
-                        res.M13 *= sca.X;
-                        res.M21 *= sca.Y;
-                        res.M22 *= sca.Y;
-                        res.M23 *= sca.Y;
-                        res.M31 *= sca.Z;
-                        res.M32 *= sca.Z;
-                        res.M33 *= sca.Z;
-                        res.M41 = loc.X;
-                        res.M42 = loc.Y;
-                        res.M43 = loc.Z;
-                        frame.Transform = res;//new AnimationTransform(new Vector3(loc.X, loc.Y, loc.Z), new Vector3(sca.X, sca.Y, sca.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
-                        node.Frames.Add(frame);
+                            frame.Transform = new AnimationTransform(new Vector3(loc.X, loc.Y, loc.Z), new Vector3(sca.X, sca.Y, sca.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
+                            node.Frames.Add(frame);
+                        }
+                        anim.MaxTime = maxTime;
+                        anim.Channels.Add(node);
                     }
-                    content.Animation.MaxTime = maxTime;
-                    content.Animation.Channels.Add(node);
+                    content.Animations.Add(anim);
                 }
                 return content;
             }
@@ -122,6 +116,15 @@ namespace engenious.Pipeline
             }
             return null;
         }
+    }
+    public class ModelProcessorSettings : ProcessorSettings
+    {
+        [Category("Settings")]
+        [DefaultValue("[1, 1, 1]")]
+        public Vector3 Scale{get;set;}=new Vector3(1);
+        [Category("Settings")]
+        [DefaultValue("[0, 0, 0]")]
+        public Vector3 Translate{get;set;} = new Vector3();
     }
 }
 

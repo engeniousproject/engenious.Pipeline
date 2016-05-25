@@ -15,7 +15,7 @@ namespace engenious.Content.Serialization
 
         public override void Write(ContentWriter writer, CompiledSpriteFont value)
         {
-            writer.WriteObject<System.Drawing.Bitmap>(value.texture);
+            writer.WriteObject<TextureContent>(value.texture);
 
             writer.Write(value.Spacing);
             writer.Write(value.LineSpacing);

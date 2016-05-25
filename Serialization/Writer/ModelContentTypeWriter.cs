@@ -50,17 +50,22 @@ namespace engenious.Content.Serialization
             }
             WriteTree(writer, value, value.RootNode);
 
-            writer.Write(value.Animation.MaxTime);
-            writer.Write(value.Animation.Channels.Count);
-            foreach (var c in value.Animation.Channels)
-            {
-                int nodeIndex = value.Nodes.IndexOf(c.Node);
-                writer.Write(nodeIndex);
-                writer.Write(c.Frames.Count);
-                foreach (var f in c.Frames)
+            writer.Write(value.Animations.Count);
+            foreach(var anim in value.Animations){
+                writer.Write(anim.MaxTime);
+                writer.Write(anim.Channels.Count);
+                foreach (var c in anim.Channels)
                 {
-                    writer.Write(f.Frame);
-                    writer.Write(f.Transform);
+                    int nodeIndex = value.Nodes.IndexOf(c.Node);
+                    writer.Write(nodeIndex);
+                    writer.Write(c.Frames.Count);
+                    foreach (var f in c.Frames)
+                    {
+                        writer.Write(f.Frame);
+                        writer.Write(f.Transform.Location);
+                        writer.Write(f.Transform.Scale);
+                        writer.Write(f.Transform.Rotation);
+                    }
                 }
             }
         }

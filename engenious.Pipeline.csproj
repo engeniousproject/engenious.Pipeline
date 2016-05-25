@@ -2,7 +2,7 @@
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{9771E0FC-D752-4D7A-89E4-4F6FA2EC3C1D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>engenious.Pipeline</RootNamespace>
@@ -65,6 +65,12 @@
     <Compile Include="Pipeline\Model\AnimationContent.cs" />
     <Compile Include="Pipeline\Processor\ModelProcessor.cs" />
     <Compile Include="Serialization\Writer\ModelContentTypeWriter.cs" />
+    <Compile Include="Pipeline\CustomProperty\CustomProperty.cs" />
+    <Compile Include="Pipeline\CustomProperty\CustomPropertyDescriptor.cs" />
+    <Compile Include="Pipeline\Processor\TextureContent.cs" />
+    <Compile Include="Serialization\Writer\TextureContentTypeWriter.cs" />
+    <Compile Include="Pipeline\Processor\BitmapProcessor.cs" />
+    <Compile Include="Pipeline\ProcessorSettings.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -78,19 +84,17 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="AssimpNet, Version=3.3.1.0, Culture=neutral, PublicKeyToken=0d51b391f59f42a6, processorArchitecture=MSIL">
-      <HintPath>..\packages\AssimpNet.3.3.1\lib\net20\AssimpNet.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="OpenTK, Version=1.1.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4, processorArchitecture=MSIL">
-      <HintPath>..\packages\OpenTK.1.1.2225.0\lib\net20\OpenTK.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0\System.dll</HintPath>
     </Reference>
     <Reference Include="System.Drawing" />
-    <Reference Include="System.XML" />
+    <Reference Include="AssimpNet, Version=3.3.1.0, Culture=neutral, PublicKeyToken=0d51b391f59f42a6">
+      <HintPath>..\packages\AssimpNet.3.3.1\lib\net20\AssimpNet.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenTK, Version=1.1.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4">
+      <HintPath>..\packages\OpenTK.1.1.2225.0\lib\net20\OpenTK.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <Import Project="..\packages\AssimpNet.3.3.1\build\AssimpNet.targets" Condition="Exists('..\packages\AssimpNet.3.3.1\build\AssimpNet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -99,4 +103,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\AssimpNet.3.3.1\build\AssimpNet.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\AssimpNet.3.3.1\build\AssimpNet.targets'))" />
   </Target>
+  <ItemGroup>
+    <Folder Include="Pipeline\CustomProperty\" />
+  </ItemGroup>
 </Project>

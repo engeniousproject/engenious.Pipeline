@@ -77,7 +77,6 @@ namespace engenious.Pipeline
                 context.RaiseBuildMessage("FBXIMPORT" , dllLoadExc.Message, BuildMessageEventArgs.BuildMessageType.Error);
             try
             {
-
                 Assimp.AssimpContext c = new Assimp.AssimpContext();
                 return c.ImportFile(filename);
             }

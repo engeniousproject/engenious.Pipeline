@@ -15,7 +15,7 @@ namespace engenious.Pipeline
 
         internal List<NodeContent> Nodes{ get; set; }
 
-        internal AnimationContent Animation{ get; set; }
+        internal List<AnimationContent> Animations{ get; set; }
 
     }
 }
