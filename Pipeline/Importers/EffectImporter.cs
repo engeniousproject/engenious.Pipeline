@@ -272,7 +272,7 @@ namespace engenious.Content.Pipeline
                                     throw new Exception("Unsupported Shader type detected");
                                 string shaderFile = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(filename), sh.GetAttribute("filename"));
                                 pi.Shaders.Add(type, shaderFile);
-                                //TODO: dependencies content.Dependencies.Add(pi.psFileName);
+                                context.Dependencies.Add(shaderFile);
 
                             }
                             else if (sh.Name == "BlendState")
