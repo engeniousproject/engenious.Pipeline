@@ -59,9 +59,9 @@ namespace engenious.Pipeline
                         var pos = sceneMesh.Vertices[i];
                         var norm = sceneMesh.Normals[i];
                         var tex = sceneMesh.TextureCoordinateChannels[0][i];
-
+                        var translated = new Vector3(pos.X, pos.Y, pos.Z)+settings.Translate;
                         meshContent.Vertices[i] = new VertexPositionNormalTexture(
-                            Vector3.Transform(new Vector3(pos.X, pos.Y, pos.Z),matrix),
+                            new Vector3(translated.X*settings.Scale.X,translated.Y*settings.Scale.Y,translated.Z*settings.Scale.Z),
                             new Vector3(norm.X, norm.Y, norm.Z),
                             new Vector2(tex.X, -tex.Y));
                     }

@@ -176,6 +176,41 @@ namespace engenious.Content.Pipeline
         {
             ReadObject(nodes,this);
         }
+        private string primitiveToString(object obj)
+        {
+            var code = Type.GetTypeCode(obj.GetType());
+            if (obj == null)
+                return null;
+            switch(code)
+            {
+                case TypeCode.String:
+                    return (string)obj;
+                case TypeCode.Boolean:
+                case TypeCode.Char:
+                    return obj.ToString();
+                case TypeCode.DateTime:
+                    return ((DateTime)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.Decimal:
+                    return ((decimal)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.Double:
+                    return ((double)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.Single:
+                    return ((float)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.Int16:
+                    return ((short)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.Int32:
+                    return ((int)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.Int64:
+                    return ((long)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.UInt16:
+                    return ((ushort)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.UInt32:
+                    return ((uint)obj).ToString(CultureInfo.InvariantCulture);
+                case TypeCode.UInt64:
+                    return ((ulong)obj).ToString(CultureInfo.InvariantCulture);
+            }
+            return obj.ToString();
+        }
 
         private void WriteObject(XmlWriter writer, object obj)
         {
@@ -186,7 +221,8 @@ namespace engenious.Content.Pipeline
                     continue;
                 if (type.IsPrimitive || type.IsEnum)
                 {
-                    writer.WriteElementString(prop.Name, prop.GetValue(obj).ToString());
+
+                    writer.WriteElementString(prop.Name, primitiveToString(prop.GetValue(obj)));
                 }
                 else
                 {
