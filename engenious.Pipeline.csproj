@@ -58,11 +58,6 @@
     <Compile Include="Serialization\Writer\RenderStateWriters.cs" />
     <Compile Include="Serialization\Writer\EffectTypeWriter.cs" />
     <Compile Include="Pipeline\Importers\FbxImporter.cs" />
-    <Compile Include="Pipeline\Model\ModelContent.cs" />
-    <Compile Include="Pipeline\Model\MeshContent.cs" />
-    <Compile Include="Pipeline\Model\NodeContent.cs" />
-    <Compile Include="Pipeline\Model\AnimationNodeContent.cs" />
-    <Compile Include="Pipeline\Model\AnimationContent.cs" />
     <Compile Include="Pipeline\Processor\ModelProcessor.cs" />
     <Compile Include="Serialization\Writer\ModelContentTypeWriter.cs" />
     <Compile Include="Pipeline\CustomProperty\CustomProperty.cs" />
@@ -95,6 +90,9 @@
       <HintPath>..\packages\OpenTK.1.1.2225.0\lib\net20\OpenTK.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
+    <Reference Include="Aspose.3D">
+      <HintPath>..\packages\Aspose.3D.1.6.1.0\lib\net40\Aspose.3D.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="..\packages\AssimpNet.3.3.1\build\AssimpNet.targets" Condition="Exists('..\packages\AssimpNet.3.3.1\build\AssimpNet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

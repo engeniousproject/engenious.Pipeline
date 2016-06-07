@@ -1,6 +1,7 @@
 ﻿using System;
 using engenious.Pipeline;
 using System.Linq;
+using engenious.Graphics;
 
 namespace engenious.Content.Serialization
 {

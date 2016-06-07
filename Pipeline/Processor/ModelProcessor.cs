@@ -18,7 +18,9 @@ namespace engenious.Pipeline
         {
             NodeContent n = new NodeContent();
             Matrix matrix = ConvertMatrix(node.Transform);
-
+            matrix.M41 *= settings.Scale.X;
+            matrix.M42 *= settings.Scale.Y;
+            matrix.M43 *= settings.Scale.Z;
             model.Nodes.Add(n);
             n.Transformation = matrix;
 
@@ -58,7 +60,9 @@ namespace engenious.Pipeline
                     {
                         var pos = sceneMesh.Vertices[i];
                         var norm = sceneMesh.Normals[i];
-                        var tex = sceneMesh.TextureCoordinateChannels[0][i];
+                        Assimp.Vector3D tex = new Assimp.Vector3D();
+                        if (sceneMesh.TextureCoordinateChannels.Length > 0 && sceneMesh.TextureCoordinateChannels[0].Count >i)
+                            tex = sceneMesh.TextureCoordinateChannels[0][i];
                         var translated = new Vector3(pos.X, pos.Y, pos.Z)+settings.Translate;
                         meshContent.Vertices[i] = new VertexPositionNormalTexture(
                             new Vector3(translated.X*settings.Scale.X,translated.Y*settings.Scale.Y,translated.Z*settings.Scale.Z),
@@ -100,7 +104,8 @@ namespace engenious.Pipeline
                             var sca = channel.ScalingKeyCount == 0 ? new Assimp.Vector3D(1, 1, 1) : i >= channel.ScalingKeyCount ? channel.ScalingKeys.Last().Value : channel.ScalingKeys[i].Value;
                             rot.Normalize();
 
-                            frame.Transform = new AnimationTransform(new Vector3(loc.X, loc.Y, loc.Z), new Vector3(sca.X, sca.Y, sca.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
+                            frame.Transform = new AnimationTransform(new Vector3((loc.X+settings.Translate.X), (loc.Y+settings.Translate.Y), (loc.Z+settings.Translate.Z)),
+                                new Vector3(sca.X*settings.Scale.X, sca.Y*settings.Scale.Y, sca.Z*settings.Scale.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
                             node.Frames.Add(frame);
                         }
                         anim.MaxTime = maxTime;

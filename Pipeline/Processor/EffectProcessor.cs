@@ -47,11 +47,7 @@ namespace engenious.Content.Pipeline
                     foreach (var pass in technique.Passes)
                     {
                         engenious.Graphics.EffectPass compiledPass = new engenious.Graphics.EffectPass(pass.Name);
-                        compiledPass.Apply();
-                        foreach (var attr in pass.Attributes)
-                        {
-                            compiledPass.BindAttribute(attr.Key, attr.Value);
-                        }
+
                         foreach (var shader in pass.Shaders)
                         {
                             try
@@ -68,6 +64,11 @@ namespace engenious.Content.Pipeline
                         }
 
                         compiledPass.Link();
+                        compiledPass.Apply();
+                        foreach (var attr in pass.Attributes)
+                        {
+                            compiledPass.BindAttribute(attr.Key, attr.Value);
+                        }
                     }
                 }
                 return input;
