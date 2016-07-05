@@ -66,6 +66,11 @@
     <Compile Include="Serialization\Writer\TextureContentTypeWriter.cs" />
     <Compile Include="Pipeline\Processor\BitmapProcessor.cs" />
     <Compile Include="Pipeline\ProcessorSettings.cs" />
+    <Compile Include="Pipeline\Processor\ColladaProcessor.cs" />
+    <Compile Include="Pipeline\Processor\EgoModelProcessor.cs" />
+    <Compile Include="Pipeline\Importers\EgoImporter.cs" />
+    <Compile Include="Pipeline\Importers\AutodeskImporter.cs" />
+    <Compile Include="Pipeline\Processor\AutodeskProcessor.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -76,6 +81,10 @@
     <ProjectReference Include="..\engenious\engenious.csproj">
       <Project>{E1FF7BDB-D631-4D4D-B5A1-988778AD15B6}</Project>
       <Name>engenious</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\FBXImporter\FBXImporter.csproj">
+      <Project>{2EDFFEF5-CF58-43A2-920F-1E1887DC3137}</Project>
+      <Name>FBXImporter</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

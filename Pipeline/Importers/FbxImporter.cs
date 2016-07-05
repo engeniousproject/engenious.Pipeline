@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace engenious.Pipeline
 {
-    [ContentImporterAttribute(".fbx", DisplayName = "Model Importer", DefaultProcessor = "ModelProcessor")]
+    [ContentImporterAttribute(/*".fbx",*/".dae", DisplayName = "Model Importer", DefaultProcessor = "ModelProcessor")]
     public class FbxImporter : ContentImporter<Assimp.Scene>
     {
         public enum Platform

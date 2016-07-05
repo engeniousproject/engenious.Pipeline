@@ -44,7 +44,7 @@ namespace engenious.Content.Serialization
             foreach (var n in value.Nodes)
             {
                 writer.Write(n.Name);
-                writer.Write(n.LocalTransform);
+                writer.Write(n.Transformation);
                 writer.Write(n.Meshes.Count);
                 foreach (var m in n.Meshes)
                     writer.Write(m);

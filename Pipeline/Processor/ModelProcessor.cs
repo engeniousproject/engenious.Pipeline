@@ -4,6 +4,7 @@ using engenious.Graphics;
 using System.Collections.Generic;
 using System.Linq;
 using System.ComponentModel;
+using System.IO;
 
 namespace engenious.Pipeline
 {
@@ -17,12 +18,16 @@ namespace engenious.Pipeline
         private NodeContent ParseNode(ModelContent model, Assimp.Node node)
         {
             NodeContent n = new NodeContent();
-            Matrix matrix = ConvertMatrix(node.Transform);
-            matrix.M41 *= settings.Scale.X;
-            matrix.M42 *= settings.Scale.Y;
-            matrix.M43 *= settings.Scale.Z;
+
             model.Nodes.Add(n);
-            n.Transformation = matrix;
+            if (settings.TransformMesh){
+                Matrix matrix = ConvertMatrix(node.Transform);
+                matrix.M41 *= settings.Scale.X;
+                matrix.M42 *= settings.Scale.Y;
+                matrix.M43 *= settings.Scale.Z;
+                n.Transformation = matrix;
+            }else
+                n.Transformation = Matrix.Identity;
 
             n.Name = node.Name;
             n.Meshes = new List<int>();
@@ -41,14 +46,15 @@ namespace engenious.Pipeline
                 m.C1, m.C2, m.C3, m.C4,
                 m.D1, m.D2, m.D3, m.D4);
         }
-
         public override ModelContent Process(Assimp.Scene scene, string filename, ContentProcessorContext context)
         {
             try
             {
+                Assimp.AssimpContext c = new Assimp.AssimpContext();
+                Assimp.ExportFormatDescription des = c.GetSupportedExportFormats()[0];
+                //c.ExportFile(scene,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),"test.dae"),des.FormatId);
                 ModelContent content = new ModelContent();
                 content.Meshes = new MeshContent[scene.MeshCount];
-                Matrix matrix= Matrix.CreateScaling(settings.Scale)*Matrix.CreateTranslation(settings.Translate);
                 for (int meshIndex = 0; meshIndex < scene.MeshCount; meshIndex++)
                 {
                     var sceneMesh = scene.Meshes[meshIndex];
@@ -74,8 +80,7 @@ namespace engenious.Pipeline
                 }
                 content.Nodes = new List<NodeContent>();
                 content.RootNode = ParseNode(content, scene.RootNode);
-                content.Animations = new List<AnimationContent>();
-
+                
                 foreach(var animation in scene.Animations){
                     var anim = new AnimationContent();
                     anim.Channels = new List<AnimationNodeContent>();
@@ -86,7 +91,8 @@ namespace engenious.Pipeline
                         var curNode = content.Nodes.First(n => n.Name == channel.NodeName);
                         node.Node = curNode;
                         node.Frames = new List<AnimationFrame>();
-                        for (int i = 0; i < Math.Max(Math.Max(channel.PositionKeyCount, channel.RotationKeyCount), channel.ScalingKeyCount); i++)
+                        int frameCount = Math.Max(Math.Max(channel.PositionKeyCount, channel.RotationKeyCount), channel.ScalingKeyCount);
+                        for (int i = 0; i < frameCount; i++)
                         {
                             AnimationFrame frame = new AnimationFrame();
 
@@ -104,7 +110,7 @@ namespace engenious.Pipeline
                             var sca = channel.ScalingKeyCount == 0 ? new Assimp.Vector3D(1, 1, 1) : i >= channel.ScalingKeyCount ? channel.ScalingKeys.Last().Value : channel.ScalingKeys[i].Value;
                             rot.Normalize();
 
-                            frame.Transform = new AnimationTransform(new Vector3((loc.X+settings.Translate.X), (loc.Y+settings.Translate.Y), (loc.Z+settings.Translate.Z)),
+                            frame.Transform = new AnimationTransform(node.Node.Name,new Vector3((loc.X+settings.Translate.X), (loc.Y+settings.Translate.Y), (loc.Z+settings.Translate.Z)),
                                 new Vector3(sca.X*settings.Scale.X, sca.Y*settings.Scale.Y, sca.Z*settings.Scale.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
                             node.Frames.Add(frame);
                         }
@@ -113,6 +119,7 @@ namespace engenious.Pipeline
                     }
                     content.Animations.Add(anim);
                 }
+
                 return content;
             }
             catch (Exception ex)
@@ -130,6 +137,11 @@ namespace engenious.Pipeline
         [Category("Settings")]
         [DefaultValue("[0, 0, 0]")]
         public Vector3 Translate{get;set;} = new Vector3();
+        [Category("Settings")]
+        [DefaultValue("[0, 0, 0]")]
+        public Vector3 Rotation{get;set;} = new Vector3();
+        [DefaultValue(true)]
+        public bool TransformMesh{get;set;}=true;
     }
 }
 
