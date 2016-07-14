@@ -69,8 +69,6 @@
     <Compile Include="Pipeline\Processor\ColladaProcessor.cs" />
     <Compile Include="Pipeline\Processor\EgoModelProcessor.cs" />
     <Compile Include="Pipeline\Importers\EgoImporter.cs" />
-    <Compile Include="Pipeline\Importers\AutodeskImporter.cs" />
-    <Compile Include="Pipeline\Processor\AutodeskProcessor.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -82,15 +80,8 @@
       <Project>{E1FF7BDB-D631-4D4D-B5A1-988778AD15B6}</Project>
       <Name>engenious</Name>
     </ProjectReference>
-    <ProjectReference Include="..\FBXImporter\FBXImporter.csproj">
-      <Project>{2EDFFEF5-CF58-43A2-920F-1E1887DC3137}</Project>
-      <Name>FBXImporter</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="System">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0\System.dll</HintPath>
-    </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="AssimpNet, Version=3.3.1.0, Culture=neutral, PublicKeyToken=0d51b391f59f42a6">
       <HintPath>..\packages\AssimpNet.3.3.1\lib\net20\AssimpNet.dll</HintPath>
@@ -99,9 +90,7 @@
       <HintPath>..\packages\OpenTK.1.1.2225.0\lib\net20\OpenTK.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
-    <Reference Include="Aspose.3D">
-      <HintPath>..\packages\Aspose.3D.1.6.1.0\lib\net40\Aspose.3D.dll</HintPath>
-    </Reference>
+    <Reference Include="System" />
   </ItemGroup>
   <Import Project="..\packages\AssimpNet.3.3.1\build\AssimpNet.targets" Condition="Exists('..\packages\AssimpNet.3.3.1\build\AssimpNet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

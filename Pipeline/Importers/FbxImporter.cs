@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace engenious.Pipeline
 {
-    [ContentImporterAttribute(/*".fbx",*/".dae", DisplayName = "Model Importer", DefaultProcessor = "ModelProcessor")]
+    [ContentImporterAttribute(".fbx",".dae", DisplayName = "Model Importer", DefaultProcessor = "ModelProcessor")]
     public class FbxImporter : ContentImporter<Assimp.Scene>
     {
         public enum Platform
@@ -78,7 +78,7 @@ namespace engenious.Pipeline
             try
             {
                 Assimp.AssimpContext c = new Assimp.AssimpContext();
-                return c.ImportFile(filename);
+                return c.ImportFile(filename,Assimp.PostProcessSteps.Triangulate | Assimp.PostProcessSteps.OptimizeMeshes | Assimp.PostProcessSteps.OptimizeGraph);
             }
             catch (Exception ex)
             {

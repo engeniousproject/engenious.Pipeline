@@ -24,7 +24,6 @@ namespace engenious.Content.Serialization
         {
             int index = value.Nodes.IndexOf(node);
             writer.Write(index);
-            writer.Write(node.Transformation);
             writer.Write(node.Children.Count);
             foreach (var c in node.Children)
                 WriteTree(writer, value, c);

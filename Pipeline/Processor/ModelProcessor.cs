@@ -15,10 +15,9 @@ namespace engenious.Pipeline
         {
         }
 
-        private NodeContent ParseNode(ModelContent model, Assimp.Node node)
+        private NodeContent ParseNode(ModelContent model, Assimp.Node node,NodeContent parent=null)
         {
-            NodeContent n = new NodeContent();
-
+            NodeContent n = new NodeContent(parent);
             model.Nodes.Add(n);
             if (settings.TransformMesh){
                 Matrix matrix = ConvertMatrix(node.Transform);
@@ -35,7 +34,7 @@ namespace engenious.Pipeline
                 n.Meshes.Add(meshIndex);
             n.Children = new List<NodeContent>();
             foreach (var child in node.Children)
-                n.Children.Add(ParseNode(model, child));
+                n.Children.Add(ParseNode(model, child,n));
             return n;
         }
 
@@ -46,11 +45,105 @@ namespace engenious.Pipeline
                 m.C1, m.C2, m.C3, m.C4,
                 m.D1, m.D2, m.D3, m.D4);
         }
+        private bool CombineWithParentNode(ModelContent content,NodeContent node)
+        {
+            if (node.Parent == null)
+                return false;
+            bool changed = false;
+            foreach(var c in node.Children)
+            {
+                c.Parent = node.Parent;
+
+                node.Parent.Children.Add(c);
+                
+            }
+            node.Children.Clear();
+            content.Nodes.Remove(node);
+
+            changed = node.Parent.Children.Remove(node);
+            if (changed)
+            {
+                foreach(var anim in content.Animations)
+                {
+                    AnimationNodeContent c1=null,c2=null;
+                    foreach(var c in anim.Channels)
+                    {
+                        if (c.Node == node.Parent)
+                            c1 = c;
+                        else if(c.Node == node)
+                            c2 = c;
+
+                        if (c1 != null && c2 != null)
+                            break;
+                    }
+                    CombineAnimationContent(c1,c2);
+                    for(int i=anim.Channels.Count-1;i>= 0;i--)
+                    {
+                        if (anim.Channels[i].Node == node)
+                            anim.Channels.RemoveAt(i);
+                    }
+                }
+            }
+            if (!node.Name.Contains("PreRotation"))
+                node.Parent.Transformation = node.Transformation*node.Parent.Transformation;
+
+            return changed;
+        }
+        private void PostProcess(ModelContent content,NodeContent node)
+        {
+            if (node.Name.Contains("$") && node.Name.Contains("Translation"))
+                node.Name = node.Name.Replace("Translation","Transform");
+            if (node.Name.Contains("$") && !node.Name.Contains("Transform"))
+            {
+                if(CombineWithParentNode(content,node))
+                    PostProcess(content,node.Parent);
+            }
+            for (int i=node.Children.Count-1;i>=0;i--){
+                var child = node.Children[i];
+                if (child.Name.Contains("$") && child.Name.Contains("PreRotation"))
+                {
+                    foreach(var anim in content.Animations)
+                    {
+                        AnimationNodeContent c=anim.Channels.FirstOrDefault(x=>x.Node == node);
+                        if (c == null)
+                            continue;
+                        foreach(var f in c.Frames)
+                        {
+                            var newVec = Vector3.Transform(f.Transform.Location,child.Transformation);
+                            newVec = new Vector3(newVec.X,newVec.Y,-newVec.Z);//TODO: hardcoded?
+                            f.Transform = new AnimationTransform("",newVec,f.Transform.Scale,f.Transform.Rotation);
+                        }
+                    }
+                }
+                PostProcess(content,child);
+            }
+
+        }
+        private void CombineAnimationContent(AnimationNodeContent c1,AnimationNodeContent c2)
+        {
+            if (c1 == null || c2 == null)
+                return;
+            AnimationFrame empty = new AnimationFrame();
+            empty.Transform = new AnimationTransform("",new Vector3(),new Vector3(1),new Quaternion(0,0,0,1));
+            for (int i=0;i<Math.Max(c1.Frames.Count,c2.Frames.Count);i++)
+            {
+                AnimationFrame f1 = i<c1.Frames.Count?c1.Frames[i]:empty;
+                AnimationFrame f2 = i<c2.Frames.Count?c2.Frames[i]:empty;
+                if (f1== empty){
+                    c1.Frames.Add(f2);
+                }else{
+                    AnimationTransform t1 = f1.Transform;
+                    AnimationTransform t2 = f2.Transform;
+                    f1.Transform = t1 + t2;
+                }
+            }
+        }
         public override ModelContent Process(Assimp.Scene scene, string filename, ContentProcessorContext context)
         {
             try
             {
                 Assimp.AssimpContext c = new Assimp.AssimpContext();
+                
                 Assimp.ExportFormatDescription des = c.GetSupportedExportFormats()[0];
                 //c.ExportFile(scene,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),"test.dae"),des.FormatId);
                 ModelContent content = new ModelContent();
@@ -61,30 +154,36 @@ namespace engenious.Pipeline
                     var meshContent = new MeshContent();
                     meshContent.PrimitiveCount = sceneMesh.FaceCount;
 
-                    meshContent.Vertices = new VertexPositionNormalTexture[sceneMesh.VertexCount];
-                    for (int i = 0; i < sceneMesh.VertexCount; i++)
+                    meshContent.Vertices = new VertexPositionNormalTexture[meshContent.PrimitiveCount * 3];
+                    int vertex=0;
+                    foreach(var f in sceneMesh.Faces)
                     {
-                        var pos = sceneMesh.Vertices[i];
-                        var norm = sceneMesh.Normals[i];
-                        Assimp.Vector3D tex = new Assimp.Vector3D();
-                        if (sceneMesh.TextureCoordinateChannels.Length > 0 && sceneMesh.TextureCoordinateChannels[0].Count >i)
-                            tex = sceneMesh.TextureCoordinateChannels[0][i];
-                        var translated = new Vector3(pos.X, pos.Y, pos.Z)+settings.Translate;
-                        meshContent.Vertices[i] = new VertexPositionNormalTexture(
-                            new Vector3(translated.X*settings.Scale.X,translated.Y*settings.Scale.Y,translated.Z*settings.Scale.Z),
-                            new Vector3(norm.X, norm.Y, norm.Z),
-                            new Vector2(tex.X, -tex.Y));
+                        foreach(var i in f.Indices)
+                        {
+                            var pos = sceneMesh.Vertices[i];
+                            var norm = sceneMesh.Normals[i];
+                            Assimp.Vector3D tex = new Assimp.Vector3D();
+                            if (sceneMesh.TextureCoordinateChannels.Length > 0 && sceneMesh.TextureCoordinateChannels[0].Count >i)
+                                tex = sceneMesh.TextureCoordinateChannels[0][i];
+                            var translated = new Vector3(pos.X, pos.Y, pos.Z)+settings.Translate;
+                            meshContent.Vertices[vertex++] = new VertexPositionNormalTexture(
+                                new Vector3(translated.X*settings.Scale.X,translated.Y*settings.Scale.Y,translated.Z*settings.Scale.Z),
+                                new Vector3(norm.X, norm.Y, norm.Z),
+                                new Vector2(tex.X, -tex.Y));
+                        }
                     }
+                    /*for (int i = 0; i < sceneMesh.VertexCount; i++)
+                    {
+
+                    }*/
 
                     content.Meshes[meshIndex] = meshContent;
                 }
                 content.Nodes = new List<NodeContent>();
                 content.RootNode = ParseNode(content, scene.RootNode);
-                
                 foreach(var animation in scene.Animations){
                     var anim = new AnimationContent();
                     anim.Channels = new List<AnimationNodeContent>();
-                    float maxTime = 0;
                     foreach (var channel in animation.NodeAnimationChannels)
                     {
                         AnimationNodeContent node = new AnimationNodeContent();
@@ -92,8 +191,10 @@ namespace engenious.Pipeline
                         node.Node = curNode;
                         node.Frames = new List<AnimationFrame>();
                         int frameCount = Math.Max(Math.Max(channel.PositionKeyCount, channel.RotationKeyCount), channel.ScalingKeyCount);
+                        float diff=0.0f,maxTime = 0;;
                         for (int i = 0; i < frameCount; i++)
                         {
+
                             AnimationFrame frame = new AnimationFrame();
 
                             if (i < channel.PositionKeyCount)
@@ -102,6 +203,9 @@ namespace engenious.Pipeline
                                 frame.Frame = (float)channel.RotationKeys[i].Time;
                             else if (i < channel.ScalingKeyCount)
                                 frame.Frame = (float)channel.ScalingKeys[i].Time;
+                            if (i==0)
+                                diff = frame.Frame;
+                            frame.Frame -= diff;
                             frame.Frame = (float)(frame.Frame / animation.TicksPerSecond);
                             maxTime = Math.Max(frame.Frame, maxTime);
                             //TODO: interpolation
@@ -119,6 +223,9 @@ namespace engenious.Pipeline
                     }
                     content.Animations.Add(anim);
                 }
+                PostProcess(content,content.RootNode);
+
+
 
                 return content;
             }
@@ -128,6 +235,7 @@ namespace engenious.Pipeline
             }
             return null;
         }
+
     }
     public class ModelProcessorSettings : ProcessorSettings
     {
