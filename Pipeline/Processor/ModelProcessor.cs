@@ -156,6 +156,7 @@ namespace engenious.Pipeline
 
                     meshContent.Vertices = new VertexPositionNormalTexture[meshContent.PrimitiveCount * 3];
                     int vertex=0;
+                    //TODO: indexing
                     foreach(var f in sceneMesh.Faces)
                     {
                         foreach(var i in f.Indices)
