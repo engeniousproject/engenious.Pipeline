@@ -13,7 +13,7 @@ namespace engenious.Content.Pipeline
         {
             try
             {
-                string content = System.IO.File.ReadAllText(filename, System.Text.Encoding.Default);
+                string content = System.IO.File.ReadAllText(filename, System.Text.Encoding.UTF8);
                 string toFind = "page id=0 file=\"";
                 int start = content.IndexOf(toFind);
                 if (start == -1)
