@@ -69,6 +69,11 @@
     <Compile Include="Pipeline\Processor\ColladaProcessor.cs" />
     <Compile Include="Pipeline\Processor\EgoModelProcessor.cs" />
     <Compile Include="Pipeline\Importers\EgoImporter.cs" />
+    <Compile Include="Pipeline\Importers\WaveImporter.cs" />
+    <Compile Include="Pipeline\Processor\AudioContent.cs" />
+    <Compile Include="ffmpeg.cs" />
+    <Compile Include="Pipeline\Processor\FFmpegContent.cs" />
+    <Compile Include="Pipeline\Processor\AudioProcessor.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
