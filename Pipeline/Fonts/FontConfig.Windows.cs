@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Drawing;
+using System.Drawing.Text;
+using System.Linq;
 using System.Runtime.InteropServices;
+using engenious.Pipeline.Pipeline.Fonts;
 
 
 namespace engenious.Pipeline
@@ -233,6 +237,7 @@ namespace engenious.Pipeline
         static extern uint GetOutlineTextMetrics(IntPtr hdc, uint cbData, IntPtr ptrZero);
         [DllImport("gdi32.dll", EntryPoint = "SelectObject")]
         public static extern IntPtr SelectObject([In] IntPtr hdc, [In] IntPtr hgdiobj);
+
         private static void GetOutlineMetrics(IntPtr hdc)
         {
             uint cbBuffer = GetOutlineTextMetrics(hdc, 0, IntPtr.Zero);
@@ -245,10 +250,10 @@ namespace engenious.Pipeline
                 {
                     OUTLINETEXTMETRIC otm = new OUTLINETEXTMETRIC();
                     otm = (OUTLINETEXTMETRIC)Marshal.PtrToStructure(buffer, typeof(OUTLINETEXTMETRIC));
-                    string otmpFamilyName = Marshal.PtrToStringAnsi(new IntPtr((int)buffer + otm.otmpFamilyName.ToInt32()));
-                    string otmpFaceName = Marshal.PtrToStringAnsi(new IntPtr((int)buffer + otm.otmpFaceName.ToInt32()));;
-                    string otmpStyleName = Marshal.PtrToStringAnsi(new IntPtr((int)buffer + otm.otmpStyleName.ToInt32()));;
-                    string otmpFullName = Marshal.PtrToStringAnsi(new IntPtr((int)buffer + otm.otmpFullName.ToInt32()));;
+                    string otmpFamilyName = Marshal.PtrToStringAnsi(buffer + otm.otmpFamilyName.ToInt32());
+                    string otmpFaceName = Marshal.PtrToStringAnsi(buffer + otm.otmpFaceName.ToInt32());
+                    string otmpStyleName = Marshal.PtrToStringAnsi(buffer + otm.otmpStyleName.ToInt32());
+                    string otmpFullName = Marshal.PtrToStringAnsi(buffer + otm.otmpFullName.ToInt32());
                 }
             }
             finally
@@ -256,18 +261,19 @@ namespace engenious.Pipeline
                 Marshal.FreeHGlobal(buffer);
             }
         }
+
         public override string GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style)
         {
             IntPtr dc = GetDC(IntPtr.Zero);
-            System.Drawing.Font fnt = new System.Drawing.Font(fontName,fontSize,style,System.Drawing.GraphicsUnit.Point);
-            var field = typeof(System.Drawing.Font).GetField("nativeFont",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
-            if (field == null)
-                throw new System.IO.FileNotFoundException("Can't get Native Font");
-            IntPtr hFont = (IntPtr)field.GetValue(fnt);
+
+            System.Drawing.Font fnt = new System.Drawing.Font("Arial", fontSize, style, System.Drawing.GraphicsUnit.Point);
+            IntPtr hFont = fnt.ToHfont();
             hFont = SelectObject(dc, hFont);
             GetOutlineMetrics(dc);
 
-            ReleaseDC(IntPtr.Zero,dc);
+            ReleaseDC(IntPtr.Zero, dc);
+            return "";
+            return @"C:\Windows\Fonts\arial.ttf";
         }
 
         #endregion

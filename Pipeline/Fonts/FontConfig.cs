@@ -19,6 +19,7 @@ namespace engenious.Pipeline
                             fontConfig = new FontConfigMac();
                             break;
                         case Platform.Windows:
+                            fontConfig = new FontConfigWindows();
                             break;
                     }
 

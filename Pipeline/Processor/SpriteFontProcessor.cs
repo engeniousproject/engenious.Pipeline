@@ -34,8 +34,8 @@ namespace engenious.Pipeline
             //ListFonts();
             string fontFile = FontConfig.Instance.GetFontFile(input.FontName,input.Size,input.Style);
             unsafe{
-                SharpFont.Library lib = new SharpFont.Library();
-                var face = lib.NewFace(fontFile,0);
+                //SharpFont.Library lib = new SharpFont.Library();
+                //var face = lib.NewFace(fontFile,0);
 
             }
 
