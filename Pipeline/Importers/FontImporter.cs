@@ -2,7 +2,7 @@
 
 namespace engenious.Content.Pipeline
 {
-    [ContentImporterAttribute(".fnt", DisplayName = "FontImporter Importer", DefaultProcessor = "FontProcessor")]
+    [ContentImporterAttribute(".fnt", DisplayName = "FontImporter", DefaultProcessor = "FontProcessor")]
     public class FontImporter : ContentImporter<FontContent>
     {
         public FontImporter()
