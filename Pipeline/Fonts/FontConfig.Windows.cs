@@ -50,18 +50,20 @@ namespace engenious.Pipeline
         #region implemented abstract members of FontConfig
        
 
-        public override string GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style)
+        public override bool GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style,out string fileName)
         {
+            fileName = null;
+
             System.Drawing.Font fnt = new System.Drawing.Font(fontName, fontSize, style, System.Drawing.GraphicsUnit.Point);
 
             var names = GetFontNames(fnt);
-            string fileName=null;
             foreach (var name in names)
             {
                 if (fontFileMap.TryGetValue(name.Name, out fileName))
                     break;
             }
-            return fileName;
+            //Check if requested Font != Default Font
+            return System.Drawing.FontFamily.GenericSansSerif.Name == fnt.OriginalFontName;
         }
 
         private List<NameRecord> GetFontNames(System.Drawing.Font font)

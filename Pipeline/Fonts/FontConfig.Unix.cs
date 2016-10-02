@@ -34,9 +34,9 @@ namespace engenious.Pipeline
 
         #region implemented abstract members of FontConfig
 
-        public override string GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style)
+        public override bool GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style,out string fileName)
         {
-            string resultName=null;
+            fileName = null;
             var config = FcInitLoadConfigAndFonts();
 
             List<string> fontStyles=new List<string>();
@@ -62,7 +62,7 @@ namespace engenious.Pipeline
                 if (FcPatternGetString(font, FC_FILE, 0, out resultPtr) == FcResult.FcResultMatch)
                 {
                     // save the file to another std::string
-                    resultName=System.Runtime.InteropServices.Marshal.PtrToStringAnsi(resultPtr);
+                    fileName = System.Runtime.InteropServices.Marshal.PtrToStringAnsi(resultPtr);
                 }
 
                 FcPatternDestroy(font);
@@ -70,7 +70,7 @@ namespace engenious.Pipeline
 
             FcPatternDestroy(pat);
 
-            return resultName;
+            return true;
         }
 
         #endregion

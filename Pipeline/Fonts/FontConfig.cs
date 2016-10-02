@@ -27,7 +27,7 @@ namespace engenious.Pipeline
                 return fontConfig;
             }
         }
-        public abstract string GetFontFile(string fontName,int fontSize,System.Drawing.FontStyle style);
+        public abstract bool GetFontFile(string fontName,int fontSize,System.Drawing.FontStyle style,out string fileName);
     }
 }
 
