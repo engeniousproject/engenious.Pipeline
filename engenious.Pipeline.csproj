@@ -83,7 +83,6 @@
     <Compile Include="Pipeline\Fonts\FontConfig.Unix.cs" />
     <Compile Include="Pipeline\Fonts\FontConfig.Mac.cs" />
     <Compile Include="Pipeline\Fonts\FontConfig.Windows.cs" />
-    <Compile Include="Pipeline\Fonts\FontNameExtractor.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
