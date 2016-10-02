@@ -3,7 +3,8 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Linq;
 using System.Runtime.InteropServices;
-using engenious.Pipeline.Pipeline.Fonts;
+using System.Collections.Generic;
+using System.IO;
 
 
 namespace engenious.Pipeline
@@ -262,17 +263,35 @@ namespace engenious.Pipeline
             }
         }
 
+        private IEnumerable<uint> checksums(System.IO.Stream stream)
+        {
+            byte[] buffer = new byte[6];
+            stream.Read(buffer,0,buffer.Length);
+            ushort numTables = BitConverter.ToUInt16(buffer,4);
+            buffer = new byte[16*numTables];
+            stream.Read(buffer,0,buffer.Length);
+            for (int i=0;i<numTables;i++)
+            {
+                yield return BitConverter.ToUInt32(buffer,i*16+4);
+            }
+            yield break;
+        }
+        [DllImport("gdi32.dll")]
+        private static extern uint GetFontData(IntPtr hdc, uint dwTable, uint dwOffset, [Out] byte[] lpvBuffer, uint cbData);
+
         public override string GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style)
         {
             IntPtr dc = GetDC(IntPtr.Zero);
 
             System.Drawing.Font fnt = new System.Drawing.Font("Arial", fontSize, style, System.Drawing.GraphicsUnit.Point);
             IntPtr hFont = fnt.ToHfont();
-            hFont = SelectObject(dc, hFont);
-            GetOutlineMetrics(dc);
+            SelectObject(dc, hFont);
+            //GetOutlineMetrics(dc);
 
-            ReleaseDC(IntPtr.Zero, dc);
-            return "";
+            //ReleaseDC(IntPtr.Zero, dc);
+
+            var name = FontNameExtractor.GetFullFontName(dc);
+            Console.WriteLine(name);
             return @"C:\Windows\Fonts\arial.ttf";
         }
 
