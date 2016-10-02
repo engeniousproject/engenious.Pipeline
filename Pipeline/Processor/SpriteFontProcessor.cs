@@ -48,7 +48,7 @@ namespace engenious.Pipeline
             var characters = input.CharacterRegions.SelectMany(
                 r => r.GetChararcters().Select(c => Tuple.Create(c, face.GetCharIndex(c)))).Where(x=>x.Item2 != 0).ToList();
 
-            var bitmaps = new List<Tuple<char, Bitmap,int>>();
+            var bitmaps = new List<Tuple<char, Bitmap,int,GlyphMetrics>>();
 
             compiled.LineSpacing = face.Size.Metrics.Height.Value>>6;
             compiled.BaseLine = face.Size.Metrics.Ascender.Value>>6;
@@ -92,7 +92,7 @@ namespace engenious.Pipeline
 
                 }
 
-                bitmaps.Add(Tuple.Create(character, bmp, glyph.Advance.X.Value>>6));
+                bitmaps.Add(Tuple.Create(character, bmp, glyph.Advance.X.Value>>6,glyph.Metrics));
             }
             g.Dispose();
             var totalWidth = bitmaps.Sum(kvp => kvp.Item2.Width+2);
@@ -111,7 +111,8 @@ namespace engenious.Pipeline
                 
                 var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly,
                     bmp.PixelFormat);
-                compiled.characterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offset,0,bmp.Width,bmp.Height),Vector2.Zero, bmpKvp.Item3));
+                
+                compiled.characterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offset,0,bmp.Width,bmp.Height),new Vector2(bmpKvp.Item4.HorizontalBearingX.Value >> 6,bmpKvp.Item4.HorizontalBearingY.Value>>6), bmpKvp.Item3));
                 var padding = bmp.Width%4 == 0 ? 0 : 4- bmp.Width%4;
                 unsafe{
                     
@@ -131,7 +132,6 @@ namespace engenious.Pipeline
                 offset += bmp.Width;
 
                 bmp.UnlockBits(bmpData);
-                bmp.Save("glyphs\\" + ((ushort)bmpKvp.Item1).ToString() + ".png", ImageFormat.Png);
                 bmp.Dispose();
             }
             compiled.texture = new TextureContent(false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
