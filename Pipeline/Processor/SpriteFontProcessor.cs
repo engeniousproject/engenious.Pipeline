@@ -49,8 +49,9 @@ namespace engenious.Pipeline
                 r => r.GetChararcters().Select(c => Tuple.Create(c, face.GetCharIndex(c)))).Where(x=>x.Item2 != 0).ToList();
 
             var bitmaps = new List<Tuple<char, Bitmap,int>>();
-            compiled.LineSpacing = (int)Math.Round((float)face.Height/g.DpiX);
-            compiled.BaseLine = (int)Math.Round((float)face.Ascender/g.DpiX);
+
+            compiled.LineSpacing = face.Size.Metrics.Height.Value>>6;
+            compiled.BaseLine = face.Size.Metrics.Ascender.Value>>6;
             //Loading Glyphs, Calculate Kernings and Create Bitmaps
             foreach (var l in characters)
             {
@@ -90,7 +91,7 @@ namespace engenious.Pipeline
                     bmp = (Bitmap) bmg.Bitmap.ToGdipBitmap(System.Drawing.Color.Black);
 
                 }
-                
+
                 bitmaps.Add(Tuple.Create(character, bmp, glyph.Advance.X.Value>>6));
             }
             g.Dispose();
@@ -142,7 +143,7 @@ namespace engenious.Pipeline
             //Saving files
             target.Save("test.png",ImageFormat.Png);
             target.Dispose();
-            System.Diagnostics.Process.Start("test.png"); //TODO: Remove later
+            //System.Diagnostics.Process.Start("test.png"); //TODO: Remove later
 
 
             return compiled;
