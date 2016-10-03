@@ -63,7 +63,7 @@ namespace engenious.Pipeline
                     break;
             }
             //Check if requested Font != Default Font
-            return System.Drawing.FontFamily.GenericSansSerif.Name == fnt.OriginalFontName;
+            return fnt.OriginalFontName == System.Drawing.FontFamily.GenericSansSerif.Name || fnt.OriginalFontName == fnt.Name;
         }
 
         private List<NameRecord> GetFontNames(System.Drawing.Font font)
