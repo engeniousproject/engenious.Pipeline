@@ -53,6 +53,7 @@ namespace engenious.Pipeline
             compiled.LineSpacing = face.Size.Metrics.Height.Value>>6;
             compiled.BaseLine = face.Size.Metrics.Ascender.Value>>6;
             //Loading Glyphs, Calculate Kernings and Create Bitmaps
+            int totalWidth=0,maxWidth=0,maxHeight=0;
             foreach (var l in characters)
             {
                 var character = l.Item1;
@@ -71,7 +72,7 @@ namespace engenious.Pipeline
                     {
                         var kerning = face.GetKerning(l.Item2, r.Item2, KerningMode.Default);
                         if (kerning == default(FTVector26Dot6)) continue;
-                        compiled.kernings[l.Item1<<16|r.Item1] = kerning.X.Value>>6;
+                        compiled.kernings[(int)l.Item1<<16|(int)r.Item1] = kerning.X.Value>>6;
                     }
                 }
 
@@ -91,17 +92,18 @@ namespace engenious.Pipeline
                     bmp = (Bitmap) bmg.Bitmap.ToGdipBitmap(System.Drawing.Color.Black);
 
                 }
-
+                totalWidth += 2+bmp.Width;
+                maxWidth = Math.Max(maxWidth,bmp.Width+2);
+                maxHeight = Math.Max(maxHeight,bmp.Height+2);
                 bitmaps.Add(Tuple.Create(character, bmp, glyph.Advance.X.Value>>6,glyph.Metrics));
             }
             g.Dispose();
-            var totalWidth = bitmaps.Sum(kvp => kvp.Item2.Width+2);
-            var maxHeight = bitmaps.Max(kvp => kvp.Item2.Height);
+            int cellCount = (int)Math.Ceiling(Math.Sqrt(bitmaps.Count));
 
-            var target = new Bitmap(totalWidth,maxHeight);
+            var target = new Bitmap(cellCount*maxWidth,cellCount*maxHeight);
             var targetRectangle = new Rectangle(0, 0, target.Width, target.Height);
             var targetData = target.LockBits(new System.Drawing.Rectangle(0, 0, target.Width, target.Height), ImageLockMode.WriteOnly, target.PixelFormat);
-            var offset = 0;
+            int offsetX = 0,offsetY=0;
 
             //Create Glyph Atlas
             foreach (var bmpKvp in bitmaps)
@@ -111,12 +113,16 @@ namespace engenious.Pipeline
                 
                 var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly,
                     bmp.PixelFormat);
-                
-                compiled.characterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offset,0,bmp.Width,bmp.Height),new Vector2(bmpKvp.Item4.HorizontalBearingX.Value >> 6,bmpKvp.Item4.HorizontalBearingY.Value>>6), bmpKvp.Item3));
+                if (offsetX+bmp.Width > target.Width)
+                {
+                    offsetY += maxHeight;
+                    offsetX = 0;
+                }
+                compiled.characterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offsetX,offsetY,bmp.Width,bmp.Height),new Vector2(bmpKvp.Item4.HorizontalBearingX.Value >> 6,compiled.BaseLine - (bmpKvp.Item4.HorizontalBearingY.Value>>6)), bmpKvp.Item3));
                 var padding = bmp.Width%4 == 0 ? 0 : 4- bmp.Width%4;
                 unsafe{
                     
-                    int* targetPtr = (int*) targetData.Scan0+offset; //Pointer zum Pixel im Target Bitmap
+                    int* targetPtr = (int*) targetData.Scan0+offsetX+offsetY*target.Width; //Pointer zum Pixel im Target Bitmap
                     byte* bmpPtr = (byte*)bmpData.Scan0;
                     for (int x = 0; x < bmp.Height; x++)
                     {
@@ -129,7 +135,9 @@ namespace engenious.Pipeline
                         bmpPtr += padding;
                     }
                 }
-                offset += bmp.Width;
+                offsetX += bmp.Width;
+
+                
 
                 bmp.UnlockBits(bmpData);
                 bmp.Dispose();
