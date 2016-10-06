@@ -4,7 +4,9 @@ namespace engenious.Content.Pipeline
 {
 	public interface IContentImporter
 	{
-		object Import (string filename, ContentImporterContext context);
+        Type ExportType { get; }
+
+        object Import (string filename, ContentImporterContext context);
 	}
 }
 

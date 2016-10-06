@@ -37,8 +37,11 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="nscheiss.cs" />
     <Compile Include="Pipeline\BuildMessageEventArgs.cs" />
+    <Compile Include="Pipeline\Editors\BitmapContentEditor.cs" />
     <Compile Include="Pipeline\Editors\ContentEditorAttribute.cs" />
+    <Compile Include="Pipeline\Editors\ContentEditorWrapper.cs" />
     <Compile Include="Pipeline\Editors\IContentEditor.cs" />
     <Compile Include="Pipeline\IContentContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -115,11 +118,13 @@
     <Reference Include="OpenTK, Version=1.1.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4">
       <HintPath>..\packages\OpenTK.1.1.2225.0\lib\net20\OpenTK.dll</HintPath>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System" />
-    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Pipeline\Editors\Controls\" />
+  </ItemGroup>
   <Import Project="..\packages\AssimpNet.3.3.1\build\AssimpNet.targets" Condition="Exists('..\packages\AssimpNet.3.3.1\build\AssimpNet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

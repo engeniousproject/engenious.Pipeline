@@ -7,6 +7,9 @@ namespace engenious.Content.Pipeline
     {
         ProcessorSettings Settings{get;set;}
         object Process(object input, string filename, ContentProcessorContext context);
+
+        Type ImportType { get; }
+        Type ExportType { get; }
     }
 }
 

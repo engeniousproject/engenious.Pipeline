@@ -9,26 +9,10 @@ namespace engenious.Content.Pipeline
         {
             settings = new TSettings();
         }
-        private static Type importType = null;
-        public static Type ImportType
-        {
-            get
-            {
-                if (importType == null)
-                    importType = typeof(TInput);
-                return importType;
-            }
-        }
-        private static Type exportType = null;
-        public static Type ExportType
-        {
-            get
-            {
-                if (exportType == null)
-                    exportType = typeof(TOutput);
-                return exportType;
-            }
-        }
+        protected static readonly Type _importType =  typeof(TInput);
+        protected static readonly Type _exportType = typeof(TOutput);
+        public Type ImportType => _importType;
+        public Type ExportType => _exportType;
 
         /*public TSettings Settings
         {
