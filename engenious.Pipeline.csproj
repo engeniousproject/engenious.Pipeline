@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\SharpFont.4.0.1\build\SharpFont.props" Condition="Exists('..\packages\SharpFont.4.0.1\build\SharpFont.props')" />
   <ItemGroup>
     <!-- TODO try and make this smarter, at least pick x86/x64, maybe see which MSVC redist is available -->
@@ -47,7 +47,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Pipeline\BuildMessageEventArgs.cs" />
+    <Compile Include="Pipeline\Editors\BitmapContentEditor.cs" />
     <Compile Include="Pipeline\Editors\ContentEditorAttribute.cs" />
+    <Compile Include="Pipeline\Editors\ContentEditorWrapper.cs" />
     <Compile Include="Pipeline\Editors\IContentEditor.cs" />
     <Compile Include="Pipeline\IContentContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -113,6 +115,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="SharpFont, Version=4.0.1.200, Culture=neutral, PublicKeyToken=48add4c483071cdf, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpFont.4.0.1\lib\net45\SharpFont.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="AssimpNet, Version=3.3.1.0, Culture=neutral, PublicKeyToken=0d51b391f59f42a6">
       <HintPath>..\packages\AssimpNet.3.3.1\lib\net20\AssimpNet.dll</HintPath>
@@ -127,7 +133,9 @@
       <HintPath>..\packages\OpenTK.2.0.0\lib\net20\OpenTK.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Pipeline\Editors\Controls\" />
+  </ItemGroup>
   <Import Project="..\packages\AssimpNet.3.3.1\build\AssimpNet.targets" Condition="Exists('..\packages\AssimpNet.3.3.1\build\AssimpNet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
