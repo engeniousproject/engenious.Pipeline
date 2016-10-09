@@ -43,9 +43,12 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+<<<<<<< HEAD
     <Compile Include="..\SolutionInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+=======
+>>>>>>> deleted file(nscheiss.cs) from project
     <Compile Include="Pipeline\BuildMessageEventArgs.cs" />
     <Compile Include="Pipeline\Editors\BitmapContentEditor.cs" />
     <Compile Include="Pipeline\Editors\ContentEditorAttribute.cs" />
@@ -115,16 +118,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="SharpFont, Version=4.0.1.200, Culture=neutral, PublicKeyToken=48add4c483071cdf, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpFont.4.0.1\lib\net45\SharpFont.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="AssimpNet, Version=3.3.1.0, Culture=neutral, PublicKeyToken=0d51b391f59f42a6">
       <HintPath>..\packages\AssimpNet.3.3.1\lib\net20\AssimpNet.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="System" />
+<<<<<<< HEAD
     <Reference Include="System.Windows.Forms" />
     <Reference Include="SharpFont, Version=4.0.1.200, Culture=neutral, PublicKeyToken=48add4c483071cdf">
       <HintPath>..\packages\SharpFont.4.0.1\lib\net45\SharpFont.dll</HintPath>
@@ -132,6 +132,11 @@
     <Reference Include="OpenTK">
       <HintPath>..\packages\OpenTK.2.0.0\lib\net20\OpenTK.dll</HintPath>
     </Reference>
+=======
+    <Reference Include="SharpFont, Version=4.0.1.200, Culture=neutral, PublicKeyToken=48add4c483071cdf">
+      <HintPath>..\packages\SharpFont.4.0.1\lib\net45\SharpFont.dll</HintPath>
+    </Reference>
+>>>>>>> deleted file(nscheiss.cs) from project
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Pipeline\Editors\Controls\" />
