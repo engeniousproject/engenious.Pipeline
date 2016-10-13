@@ -3,7 +3,7 @@
   <Import Project="..\packages\SharpFont.4.0.1\build\SharpFont.props" Condition="Exists('..\packages\SharpFont.4.0.1\build\SharpFont.props')" />
   <ItemGroup>
       <!-- TODO try and make this smarter, at least pick x86/x64, maybe see which MSVC redist is available -->
-      <Content Include="$(MSBuildThisFileDirectory)..\bin\msvc10\x64\freetype6.dll" Condition="Exists('$(MSBuildThisFileDirectory)..\bin\msvc10\x64\freetype6.dll')" >
+      <Content Include="..\packages\SharpFont.Dependencies.2.6\bin\msvc10\x64\freetype6.dll" Condition="Exists('..\packages\SharpFont.Dependencies.2.6\bin\msvc10\x64\freetype6.dll')" >
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
   </ItemGroup>
