@@ -7,14 +7,16 @@ namespace engenious.Content.Pipeline
 {
     public class ContentProcessorContext: ContentContext
     {
-        private GameWindow window;
-
+        private INativeWindow window;
+        private IGraphicsContext context;
         public ContentProcessorContext(string workingDirectory = "")
         {
             this.WorkingDirectory = workingDirectory;
-            window = new GameWindow();
+            //window = new GameWindow();
+            window = new NativeWindow();
+
             ThreadingHelper.Initialize(window.WindowInfo, 3, 1, GraphicsContextFlags.Debug);
-            GraphicsDevice = new GraphicsDevice(null, window.Context);
+            GraphicsDevice = new GraphicsDevice(null, ThreadingHelper.context);
 
         }
 
