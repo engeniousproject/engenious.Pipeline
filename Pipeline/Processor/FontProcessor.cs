@@ -40,7 +40,7 @@ namespace engenious.Content.Pipeline
                 CompiledSpriteFont font = new CompiledSpriteFont();
                 var text = new System.Drawing.Bitmap(input.TextureFile);
                 var textData = text.LockBits(new System.Drawing.Rectangle(0,0,text.Width,text.Height),System.Drawing.Imaging.ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                font.texture = new TextureContent(false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+                font.texture = new TextureContent(true,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
                 text.UnlockBits(textData);  
                 text.Dispose();
 

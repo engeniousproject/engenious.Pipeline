@@ -142,14 +142,14 @@ namespace engenious.Pipeline
                 bmp.UnlockBits(bmpData);
                 bmp.Dispose();
             }
-            compiled.texture = new TextureContent(false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+            compiled.texture = new TextureContent(true,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
             compiled.Spacing = input.Spacing;
             compiled.DefaultCharacter = input.DefaultCharacter;
             
             target.UnlockBits(targetData);
             
             //Saving files
-            target.Save("test.png",ImageFormat.Png);
+            //target.Save("test.png",ImageFormat.Png);
             target.Dispose();
             //System.Diagnostics.Process.Start("test.png"); //TODO: Remove later
 
