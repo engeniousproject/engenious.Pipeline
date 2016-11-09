@@ -35,7 +35,8 @@ namespace engenious.Pipeline
             //Initialization
             SharpFont.Library lib = new SharpFont.Library();
             var face = lib.NewFace(fontFile, 0);
-            System.Drawing.Graphics g = System.Drawing.Graphics.FromHwnd(IntPtr.Zero);
+            Bitmap dummyBitmap = new Bitmap(1,1);
+            System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(dummyBitmap);
             face.SetCharSize(new Fixed26Dot6(0), new Fixed26Dot6(input.Size), (uint)g.DpiX, (uint)g.DpiY);
 
             CompiledSpriteFont compiled = new CompiledSpriteFont();
@@ -98,6 +99,7 @@ namespace engenious.Pipeline
                 bitmaps.Add(Tuple.Create(character, bmp, glyph.Advance.X.Value>>6,glyph.Metrics));
             }
             g.Dispose();
+            dummyBitmap.Dispose();
             int cellCount = (int)Math.Ceiling(Math.Sqrt(bitmaps.Count));
 
             var target = new Bitmap(cellCount*maxWidth,cellCount*maxHeight);
