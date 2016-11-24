@@ -16,7 +16,7 @@ namespace engenious.Content.Pipeline
         public override TextureContent Process(Bitmap input, string filename, ContentProcessorContext context)
         {
             var data = input.LockBits(new System.Drawing.Rectangle(0,0,input.Width,input.Height),System.Drawing.Imaging.ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            TextureContent content = new TextureContent(!settings.AutoGenerateMipMaps,settings.MipMapCount,data.Scan0,input.Width,input.Height,TextureContentFormat.Png,settings.Format);
+            TextureContent content = new TextureContent(context.GraphicsDevice,!settings.AutoGenerateMipMaps,settings.MipMapCount,data.Scan0,input.Width,input.Height,TextureContentFormat.Png,settings.Format);
             input.UnlockBits(data);
             return content;
         }

@@ -157,7 +157,7 @@ namespace engenious.Pipeline
                 offsetX += width;//TODO divide by 3?
                 bmp.Dispose();
             }
-            compiled.texture = new TextureContent(true,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+            compiled.texture = new TextureContent(context.GraphicsDevice,false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
             compiled.Spacing = input.Spacing;
             compiled.DefaultCharacter = input.DefaultCharacter;
             
