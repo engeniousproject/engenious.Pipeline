@@ -38,17 +38,22 @@ namespace engenious.Content.Pipeline
                     texture = GL.GenTexture();
 
                     GL.BindTexture(TextureTarget.Texture2D, texture);
-
+                    bool doGenerate = generateMipMaps && mipMapCount > 1;
 
                     setDefaultTextureParameters();
                     //GL.TexStorage2D(TextureTarget2d.Texture2D,(GenerateMipMaps ? 1 : MipMapCount),SizedInternalFormat.Rgba8,width,height);
                     //GL.TexSubImage2D(TextureTarget.Texture2D,0,0,0,width,height,
-                    if (graphicsDevice.majorVersion < 3 && ((graphicsDevice.majorVersion == 1 && graphicsDevice.minorVersion >= 4) || graphicsDevice.majorVersion > 1))
-                        GL.TexParameter(TextureTarget.Texture2D,TextureParameterName.GenerateMipmap,1);
-                    else if (graphicsDevice.majorVersion < 3)
-                        throw new NotSupportedException("Can't generate MipMaps on this Hardware");
+                    if (doGenerate)
+                    {
+                        if (graphicsDevice.majorVersion < 3 &&
+                            ((graphicsDevice.majorVersion == 1 && graphicsDevice.minorVersion >= 4) ||
+                             graphicsDevice.majorVersion > 1))
+                            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.GenerateMipmap, 1);
+                        else if (graphicsDevice.majorVersion < 3)
+                            throw new NotSupportedException("Can't generate MipMaps on this Hardware");
+                    }
                     GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL4.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL4.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL4.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL4.PixelFormat.Bgra), PixelType.UnsignedByte, inputData);
-                    if (generateMipMaps && mipMapCount > 1)
+                    if (doGenerate)
                     {
                         //TOODO non power of 2 Textures?
                         GL.TexParameter(TextureTarget.Texture2D,TextureParameterName.TextureMaxLevel,mipMapCount);
