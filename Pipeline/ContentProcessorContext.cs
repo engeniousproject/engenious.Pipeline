@@ -26,8 +26,8 @@ namespace engenious.Content.Pipeline
 
         public override void Dispose()
         {
-            GraphicsDevice.Dispose();
-            window.Dispose();
+            //GraphicsDevice.Dispose();
+            //window.Dispose();
         }
     }
 }
