@@ -8,13 +8,13 @@ using engenious.Helper;
 
 namespace engenious.Pipeline
 {
-    [ContentImporter(".fbx",".dae", DisplayName = "Model Importer", DefaultProcessor = "ModelProcessor")]
-    public class FbxImporter : ContentImporter<Scene>
+    [ContentImporter(".3D",".3DS",".3MF",".AC",".AC3D",".ACC",".AMJ",".ASE",".ASK",".B3D",".BLEND",".BVH",".COB",".CMS",".DAE",".DXF",".ENFF",".FBX",".glTF",".glTF",".HMB",".IFC-STEP",".IRR",".LWO",".LWS",".LXO",".MD2",".MD3",".MD5",".MDC",".MDL",".MESH",".MOT",".MS3D",".NDO",".NFF",".OBJ",".OFF",".OGEX",".PLY",".PMX",".PRJ",".Q3O",".Q3S",".RAW",".SCN",".SIB",".SMD",".STL",".STP",".TER",".UC",".VTA",".X",".X3D",".XGL",".ZGL", DisplayName = "Model Importer", DefaultProcessor = "ModelProcessor")]
+    public class ModelImporter : ContentImporter<Scene>
     {
 
         private static readonly Exception DllLoadExc;
 
-        static FbxImporter()
+        static ModelImporter()
         {
             try
             {
@@ -50,7 +50,7 @@ namespace engenious.Pipeline
             try
             {
                 AssimpContext c = new AssimpContext();
-                return c.ImportFile(filename,PostProcessSteps.JoinIdenticalVertices | PostProcessSteps.FindInstances | PostProcessSteps.Triangulate | PostProcessSteps.OptimizeMeshes | PostProcessSteps.OptimizeGraph);
+                return c.ImportFile(filename,PostProcessSteps.Triangulate);//,PostProcessSteps.JoinIdenticalVertices | PostProcessSteps.FindInstances | PostProcessSteps.Triangulate | PostProcessSteps.OptimizeMeshes | PostProcessSteps.OptimizeGraph
             }
             catch (Exception ex)
             {
