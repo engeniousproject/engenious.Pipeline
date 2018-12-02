@@ -2,7 +2,6 @@
 using System.IO;
 using System.Reflection;
 using Assimp;
-using Assimp.Unmanaged;
 using engenious.Content.Pipeline;
 using engenious.Helper;
 
@@ -35,7 +34,7 @@ namespace engenious.Pipeline
                     dir = Path.Combine(dir, "Assimp64" + ext);
                 else
                     dir = Path.Combine(dir, "Assimp64" + ext);
-                AssimpLibrary.Instance.LoadLibrary(dir);
+                Assimp.Unmanaged.AssimpLibrary.Instance.LoadLibrary(dir);
             }
             catch (Exception ex)
             {
