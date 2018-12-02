@@ -3,18 +3,38 @@
     <PropertyGroup>
         <TargetFramework>net461</TargetFramework>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-        
+
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Description>engenious content pipeline for content compilation and similar content related things.</Description>
     </PropertyGroup>
     <ItemGroup>
-      <Reference Include="OpenTK, Version=3.0.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4">
-        <HintPath>..\libs\OpenTK.dll</HintPath>
-      </Reference>
-      <Reference Include="System.Windows.Forms" />
-        <PackageReference Include="AssimpNet" Version="4.1.0" />
-        <PackageReference Include="SharpFont" Version="4.0.1" />
+        <Reference Include="System.Windows.Forms" />
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\engenious\engenious.csproj" />
+        <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
+        <PackageReference Include="engenious" Version="*" Condition="!Exists('..\engenious\engenious.csproj')" />
+
+
+        <PackageReference Include="engenious.OpenTK" Version="3.0.1-pre" PrivateAssets="all" />
+
+        <PackageReference Include="LitGit" Version="0.1.0.15-alpha" PrivateAssets="all" />
+        <PackageReference Include="AssimpNet" Version="4.1.0" PrivateAssets="compile" />
+        <PackageReference Include="SharpFont" Version="4.0.1" PrivateAssets="compile" />
     </ItemGroup>
+    <ItemGroup>
+        <LitGitTemplateReference Include="engenious.Pipeline.Nuget.props.template" />
+        <None Remove="engenious.Pipeline.Nuget.props.template" />
+        <LitGitTemplateReference Include="Properties\AssemblyInfo.cs.template" />
+        <None Remove="Properties\AssemblyInfo.cs.template" />
+        
+        <Compile Update="Properties\AssemblyInfo.cs" Condition="Exists('Properties\AssemblyInfo.cs')">
+            <DependentUpon>AssemblyInfo.cs.template</DependentUpon>
+        </Compile>
+
+        <None Update="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')">
+            <DependentUpon>engenious.Pipeline.Nuget.props.template</DependentUpon>
+        </None>
+    </ItemGroup>
+
+    <Import Project="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')" />
 </Project>
