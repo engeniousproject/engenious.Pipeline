@@ -50,7 +50,7 @@ namespace engenious.Content.Pipeline
                     throw new Exception("No common data found");
 
                 {
-                    string[] splt = lines[lineOffset].Substring("common ".Length).Split(' ');
+                    string[] splt = lines[lineOffset].Substring("common ".Length).Split(new[]{' '}, StringSplitOptions.None);
                     foreach (string pair in splt)
                     {
                         string[] kv = pair.Split(new[] { '=' }, 2);
@@ -148,12 +148,12 @@ namespace engenious.Content.Pipeline
                     string line = lines[lineOffset];
                     if (!line.StartsWith("kerning "))
                         throw new Exception("Invalid kerning definition");
-                    string[] splt = line.Substring("kerning ".Length).Split(' ');
+                    string[] splt = line.Substring("kerning ".Length).Split(new[]{' '},StringSplitOptions.None);
                     char first = '\0', second = '\0';
                     int amount = 0;
                     foreach (string pair in splt)
                     {
-                        string[] pairSplit = pair.Split('=');
+                        string[] pairSplit = pair.Split(new[]{'='}, StringSplitOptions.None);
                         string key = pairSplit[0].ToLower();
                         string value = pairSplit[1];
                         if (key == "first")

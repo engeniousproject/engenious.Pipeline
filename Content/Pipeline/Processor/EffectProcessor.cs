@@ -15,7 +15,7 @@ namespace engenious.Content.Pipeline
     {
         private static BuildMessageEventArgs.BuildMessageType GetMessageType(string line)
         {
-            var splt = line.Split(':');
+            var splt = line.Split(new [] {':' }, StringSplitOptions.None);
             var messageType = BuildMessageEventArgs.BuildMessageType.None;
             foreach (var s in splt)
             {
