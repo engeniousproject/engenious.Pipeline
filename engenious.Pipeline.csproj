@@ -11,12 +11,12 @@
         <Reference Include="System.Windows.Forms" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" />
+        <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" PrivateAssets="all" ExcludeAssets="all" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
         <PackageReference Include="engenious" Version="*" Condition="!Exists('..\engenious\engenious.csproj')" />
 
 
-        <PackageReference Include="engenious.OpenTK" Version="3.0.1-pre" PrivateAssets="all" />
+        <PackageReference Include="engenious.OpenTK" Version="3.0.1-pre" PrivateAssets="all" Exclude="all" />
 
         <PackageReference Include="LitGit" Version="0.1.0.15-alpha" PrivateAssets="all" />
         <PackageReference Include="AssimpNet" Version="4.1.0" PrivateAssets="compile" />
@@ -35,7 +35,18 @@
         <None Update="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')">
             <DependentUpon>engenious.Pipeline.Nuget.props.template</DependentUpon>
         </None>
+
     </ItemGroup>
+    <ItemGroup>
+        <SharpFontNativeFiles Include="$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/**/*.*" Condition="Exists('$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/')" />
+
+    </ItemGroup>
+    <Target Name="CopySharpFontNativeFiles" BeforeTargets="Build">
+        <Copy
+                SourceFiles="@(SharpFontNativeFiles)"
+                DestinationFolder="$(OutDir)\%(RecursiveDir)" SkipUnchangedFiles="true"
+        />
+    </Target>
 
     <Import Project="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')" />
 </Project>
