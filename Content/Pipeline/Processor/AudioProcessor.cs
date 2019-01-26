@@ -37,7 +37,7 @@ namespace engenious.Pipeline
                     context.RaiseBuildMessage(filename, "error: ffmpeg: " + err, BuildMessageEventArgs.BuildMessageType.Error);
                 }
                 return output;
-            }catch (Win32Exception ex)
+            }catch (FileNotFoundException ex)
             {
                 context.RaiseBuildMessage(filename, "error: ffmpeg: " + ex.Message, BuildMessageEventArgs.BuildMessageType.Error);
                 return null;
