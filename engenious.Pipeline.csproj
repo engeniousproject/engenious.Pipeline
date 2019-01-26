@@ -11,6 +11,7 @@
         <Reference Include="System.Windows.Forms" />
     </ItemGroup>
     <ItemGroup>
+        <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
         <PackageReference Include="engenious" Version="*" Condition="!Exists('..\engenious\engenious.csproj')" />
 
