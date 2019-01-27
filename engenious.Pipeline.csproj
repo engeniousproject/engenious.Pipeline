@@ -18,7 +18,7 @@
 
         <PackageReference Include="engenious.OpenTK" Version="3.0.1-pre" PrivateAssets="all" Exclude="all" />
 
-        <PackageReference Include="LitGit" Version="0.1.0.15-alpha" PrivateAssets="all" />
+        <PackageReference Include="LitGit" Version="0.1.0.17-alpha" PrivateAssets="all" />
         <PackageReference Include="AssimpNet" Version="4.1.0" PrivateAssets="compile" />
         <PackageReference Include="SharpFont" Version="4.0.1" PrivateAssets="compile" />
     </ItemGroup>
@@ -42,10 +42,7 @@
 
     </ItemGroup>
     <Target Name="CopySharpFontNativeFiles" BeforeTargets="Build">
-        <Copy
-                SourceFiles="@(SharpFontNativeFiles)"
-                DestinationFolder="$(OutDir)\%(RecursiveDir)" SkipUnchangedFiles="true"
-        />
+        <Copy SourceFiles="@(SharpFontNativeFiles)" DestinationFolder="$(OutDir)\%(RecursiveDir)" SkipUnchangedFiles="true" />
     </Target>
 
     <Import Project="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')" />
