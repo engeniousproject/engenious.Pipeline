@@ -61,7 +61,7 @@ namespace engenious.Content.Pipeline
                         int eInd = GetMinGreaterZero(lines[i].IndexOf(':'),lines[i].IndexOf(')'));
                         if (eInd != -1)
                         {
-                            errorLoc = lines[i].Substring(0, eInd);
+                            errorLoc = lines[i].Substring(0, eInd).Replace('(', ',');
                             if (errorLoc.IndexOf(',') == -1)
                                 errorLoc = errorLoc + ",1";
                             lines[i] = lines[i].Substring(eInd+3).Trim();
