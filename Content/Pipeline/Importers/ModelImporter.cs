@@ -22,21 +22,24 @@ namespace engenious.Pipeline
                     throw new Exception("executing path not found");
                 string ext = ".dll";
                 string prefix = "win";
+                string libprefix = "";
                 switch (PlatformHelper.RunningPlatform())
                 {
                     case Platform.Linux:
                         ext = ".so";
                         prefix = "linux";
+                        libprefix = "lib";
                         break;
                     case Platform.Mac:
                         ext = ".dylib";
                         prefix = "osx";
+                        libprefix = "lib";
                         break;
                 }
                 if (Environment.Is64BitProcess)
-                    dir = Path.Combine(dir, "runtimes", prefix + "-x64", "native", "assimp" + ext);
+                    dir = Path.Combine(dir, "runtimes", prefix + "-x64", "native", libprefix + "assimp" + ext);
                 else
-                    dir = Path.Combine(dir, "runtimes", prefix + "-x86", "native", "assimp" + ext);
+                    dir = Path.Combine(dir, "runtimes", prefix + "-x86", "native", libprefix + "assimp" + ext);
                 Assimp.Unmanaged.AssimpLibrary.Instance.LoadLibrary(dir);
             }
             catch (Exception ex)

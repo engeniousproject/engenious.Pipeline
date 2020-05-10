@@ -10,13 +10,12 @@ using System.Runtime.InteropServices;
 using System.Text;
 using engenious.Helper;
 using engenious.Pipeline;
+using OpenTK.Platform;
 
 namespace engenious.Content.Pipeline
 {
     public class ContentProcessorContext : ContentContext
     {
-        private static INativeWindow Window;
-
         static ContentProcessorContext()
         {
             
@@ -26,14 +25,31 @@ namespace engenious.Content.Pipeline
         }
 
         public ContentProcessorContext(SynchronizationContext syncContext, string workingDirectory = "")
+            : this(syncContext, null, null, workingDirectory)
+        {
+            
+        }
+        public ContentProcessorContext(SynchronizationContext syncContext, IRenderingSurface surface , GraphicsDevice graphicsDevice, string workingDirectory = "")
             : base(workingDirectory)
         {
             SyncContext = syncContext;
             
-            var window = new GameWindow(100, 100);
-            ContentProcessorContext.Window = window;
-            var windowInfo = window.WindowInfo;
-            var context = window.Context;
+            if (surface == null && graphicsDevice != null || surface != null && graphicsDevice == null)
+                throw new ArgumentException($"Either both of {nameof(surface)} and {nameof(graphicsDevice._context)} must be set or not set.");
+
+            IGraphicsContext context;
+            IWindowInfo windowInfo;
+            if (surface == null)
+            {
+                var window = new GameWindow(100, 100);
+                windowInfo = window.WindowInfo;
+                context = window.Context;
+            }
+            else
+            {
+                context = graphicsDevice._context;
+                windowInfo = surface.WindowInfo;
+            }
 
             context.MakeCurrent(windowInfo);
             (context as IGraphicsContextInternal)?.LoadAll();

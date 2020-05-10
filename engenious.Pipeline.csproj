@@ -13,7 +13,7 @@
     <ItemGroup>
         <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" PrivateAssets="all" ExcludeAssets="all" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
-        <PackageReference Include="engenious" Version="*" Condition="!Exists('..\engenious\engenious.csproj')" />
+        <PackageReference Include="engenious" Version="0.4.0.3-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
 
         <PackageReference Include="engenious.OpenTK" Version="3.0.1-pre" PrivateAssets="all" Exclude="all" />

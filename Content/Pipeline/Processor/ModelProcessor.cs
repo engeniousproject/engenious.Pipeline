@@ -149,10 +149,9 @@ namespace engenious.Pipeline
                     var sceneMesh = scene.Meshes[meshIndex];
                     if (!sceneMesh.HasVertices)
                         continue;
-                    var meshContent = new MeshContent();
-                    meshContent.PrimitiveCount = sceneMesh.FaceCount;
-
-                    meshContent.Vertices = new ConditionalVertexArray(meshContent.PrimitiveCount*3,sceneMesh.HasVertices,sceneMesh.HasVertexColors(0),sceneMesh.HasNormals,sceneMesh.HasTextureCoords(0));
+                    var verts =  new ConditionalVertexArray(sceneMesh.FaceCount*3,sceneMesh.HasVertices,sceneMesh.HasVertexColors(0),sceneMesh.HasNormals,sceneMesh.HasTextureCoords(0));
+                    
+                    var meshContent = new MeshContent(sceneMesh.FaceCount, verts);
                     
                     int vertex=0;
                     //TODO: indexing

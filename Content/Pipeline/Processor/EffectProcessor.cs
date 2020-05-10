@@ -285,45 +285,45 @@ namespace engenious.Content.Pipeline
             src.WriteLine("}");
         }
 
-        private Type getType(ActiveUniformType type)
+        private Type getType(EffectParameterType type)
         {
             Type t;
             switch (type)
             {
-                case ActiveUniformType.Bool:
+                case EffectParameterType.Bool:
                     t = typeof(bool);
                     break;
-                case ActiveUniformType.Double:
+                case EffectParameterType.Double:
                     t = typeof(double);
                     break;
-                case ActiveUniformType.Float:
+                case EffectParameterType.Float:
                     t = typeof(float);
                     break;
-                case ActiveUniformType.FloatMat4:
+                case EffectParameterType.FloatMat4:
                     t = typeof(Matrix);
                     break;
-                case ActiveUniformType.FloatVec2:
+                case EffectParameterType.FloatVec2:
                     t = typeof(Vector2);
                     break;
-                case ActiveUniformType.FloatVec3:
+                case EffectParameterType.FloatVec3:
                     t = typeof(Vector3);
                     break;
-                case ActiveUniformType.FloatVec4:
+                case EffectParameterType.FloatVec4:
                     t = typeof(Vector4);
                     break;
-                case ActiveUniformType.Sampler2D:
+                case EffectParameterType.Sampler2D:
                     t = typeof(Texture2D);
                     break;
-                case ActiveUniformType.Sampler2DArray:
+                case EffectParameterType.Sampler2DArray:
                     t = typeof(Texture2DArray);
                     break;
-                case ActiveUniformType.Int:
+                case EffectParameterType.Int:
                     t = typeof(int);
                     break;
-                case ActiveUniformType.IntVec2:
+                case EffectParameterType.IntVec2:
                     t = typeof(Point);
                     break;
-                case ActiveUniformType.UnsignedInt:
+                case EffectParameterType.UnsignedInt:
                     t = typeof(uint);
                     break;
                 default:
