@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using engenious.Graphics;
-using OpenTK;
-using OpenTK.Graphics;
 using System.Threading;
-using System.ComponentModel;
-using System.Linq.Expressions;
-using System.Runtime.InteropServices;
-using System.Text;
 using engenious.Helper;
 using engenious.Pipeline;
-using OpenTK.Platform;
+using Mono.Cecil;
+using OpenToolkit.Windowing.Common;
+using OpenToolkit.Windowing.Desktop;
 
 namespace engenious.Content.Pipeline
 {
@@ -24,45 +20,44 @@ namespace engenious.Content.Pipeline
 
         }
 
-        public ContentProcessorContext(SynchronizationContext syncContext, string workingDirectory = "")
-            : this(syncContext, null, null, workingDirectory)
+        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyDefinition createdContentAssembly, string workingDirectory = "")
+            : this(syncContext, createdContentAssembly, null, null, workingDirectory)
         {
             
         }
-        public ContentProcessorContext(SynchronizationContext syncContext, IRenderingSurface surface , GraphicsDevice graphicsDevice, string workingDirectory = "")
+        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyDefinition createdContentAssembly, IRenderingSurface surface , GraphicsDevice graphicsDevice, string workingDirectory = "")
             : base(workingDirectory)
         {
             SyncContext = syncContext;
-            
+            CreatedContentAssembly = createdContentAssembly;
+
             if (surface == null && graphicsDevice != null || surface != null && graphicsDevice == null)
                 throw new ArgumentException($"Either both of {nameof(surface)} and {nameof(graphicsDevice._context)} must be set or not set.");
 
             IGraphicsContext context;
-            IWindowInfo windowInfo;
             if (surface == null)
             {
-                var window = new GameWindow(100, 100);
-                windowInfo = window.WindowInfo;
+                var nativeWindowSettings = new NativeWindowSettings();
+                nativeWindowSettings.StartVisible = false;
+                var window = new GameWindow(GameWindowSettings.Default, nativeWindowSettings);
                 context = window.Context;
             }
             else
             {
                 context = graphicsDevice._context;
-                windowInfo = surface.WindowInfo;
             }
 
-            context.MakeCurrent(windowInfo);
-            (context as IGraphicsContextInternal)?.LoadAll();
+            context.MakeCurrent();
 
-            ThreadingHelper.Initialize(null, null, 0, 0, GraphicsContextFlags.Debug);
+            ThreadingHelper.Initialize(null, null);
 
             GraphicsDevice = new GraphicsDevice(null, ThreadingHelper.Context);
         }
 
-        public SynchronizationContext SyncContext { get; private set; }
-        public GraphicsDevice GraphicsDevice { get; private set; }
+        public SynchronizationContext SyncContext { get; }
+        public GraphicsDevice GraphicsDevice { get; }
 
-        public List<SourceFile> SourceFiles { get; set; }
+        public AssemblyDefinition CreatedContentAssembly { get; }
 
 
         public override void Dispose()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -37,14 +38,40 @@ namespace engenious.Pipeline
 
             //Initialization
 
-            if (PlatformHelper.RunningPlatform() == Platform.Windows)
+
+
+            var sharpFontLib = typeof(SharpFont.Library).Assembly;
+            try
             {
-                string arch = Environment.Is64BitProcess ? "x64" : "x86";
-                string dllPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), arch);
-                Console.WriteLine("DllPath: " + dllPath);
-                SetDllDirectory(dllPath);
+                NativeLibrary.SetDllImportResolver(sharpFontLib, (name, assembly, path) =>
+                {
+                    if (name == "freetype6")
+                    {
+                        switch (PlatformHelper.RunningPlatform())
+                        {
+                            case Platform.Windows:
+                                string arch = Environment.Is64BitProcess ? "x64" : "x86";
+                                string dllPath = Path.Combine(
+                                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                                    arch);
+                                return NativeLibrary.Load(Path.Combine(dllPath, "freetype6.dll"));
+                            case Platform.Linux:
+                                return NativeLibrary.Load("libfreetype.so");
+                            case Platform.Mac:
+                                return NativeLibrary.Load("libfreetype.dylib");
+                        }
+
+                    }
+
+                    return IntPtr.Zero;
+                });
+            }
+            catch
+            {
+                // ignored
             }
 
+            
             Library lib = new Library();
             var face = lib.NewFace(fontFile, 0);
             Bitmap dummyBitmap = new Bitmap(1,1);

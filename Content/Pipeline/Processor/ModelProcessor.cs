@@ -82,7 +82,7 @@ namespace engenious.Pipeline
                 }
             }
             if (!node.Name.Contains("PreRotation"))
-                node.Parent.Transformation = node.Transformation*node.Parent.Transformation;
+                node.Parent.Transformation = node.Parent.Transformation * node.Transformation;
 
             return changed;
         }
@@ -106,7 +106,7 @@ namespace engenious.Pipeline
                             continue;
                         foreach(var f in c.Frames)
                         {
-                            var newVec = Vector3.Transform(f.Transform.Location,child.Transformation);
+                            var newVec = Vector3.Transform(child.Transformation, f.Transform.Location);
                             newVec = new Vector3(newVec.X,newVec.Y,-newVec.Z);//TODO: hardcoded?
                             f.Transform = new AnimationTransform(string.Empty,newVec,f.Transform.Scale,f.Transform.Rotation);
                         }

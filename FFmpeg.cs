@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
-using System.Windows.Forms;
 using engenious.Helper;
 
 namespace engenious.Pipeline
@@ -95,7 +94,8 @@ namespace engenious.Pipeline
                 
                 _syncContext?.Send(o =>
                 {
-                    using (var ofd = new OpenFileDialog())
+                    // TODO: implement new file dialog
+                    /*using (var ofd = new OpenFileDialog())
                     {
                         ofd.Title = "FFmpeg";
                         ofd.FileName = _ffmpegExe;
@@ -106,7 +106,7 @@ namespace engenious.Pipeline
                             File.WriteAllText(".ffmpeg", _ffmpegExe);
                             
                         }
-                    }
+                    }*/
                 },null);
                 if (File.Exists(_ffmpegExe))
                     return RunCommand(arguments, true);

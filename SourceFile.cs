@@ -1,4 +1,5 @@
 ﻿using System;
+using Mono.Cecil;
 
 namespace engenious.Pipeline
 {
@@ -9,13 +10,14 @@ namespace engenious.Pipeline
         {
         }
 
-        public SourceFile(string name,string source)
+        public SourceFile(string name, Action<AssemblyDefinition> sourceWriter)
         {
             Name = name;
-            Source = source;
+            SourceWriter = sourceWriter;
         }
         
         public string Name { get; }
-        public string Source { get; }
+        
+        public Action<AssemblyDefinition> SourceWriter { get; }
     }
 }
