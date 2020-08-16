@@ -17,9 +17,9 @@
         <PackageReference Include="engenious" Version="0.4.0.3-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
 
-        <PackageReference Include="engenious.OpenTK" Version="4.0.0.1-pre" PrivateAssets="all" Exclude="all" />
+        <PackageReference Include="engenious.OpenTK" Version="4.0.0.2-pre" PrivateAssets="all" Exclude="all" />
 
-        <PackageReference Include="LitGit" Version="0.1.0.17-alpha" PrivateAssets="all" />
+        <PackageReference Include="LitGit" Version="0.2.0.18-alpha" PrivateAssets="all" />
         <PackageReference Include="AssimpNet" Version="4.1.0" PrivateAssets="compile" />
     </ItemGroup>
     <ItemGroup>
