@@ -436,7 +436,7 @@ namespace engenious.Content.Pipeline
                     {
                         return x.Name == "SetValue" && 
                             (x.Parameters[0].ParameterType.FullName == resolvedParamType.FullName ||
-                             resolvedParamType.IsAssignableFrom(x.Parameters[0].ParameterType.Resolve()));
+                             x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
                     });
                     setWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(setValue));
                     
