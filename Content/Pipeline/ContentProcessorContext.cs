@@ -20,16 +20,15 @@ namespace engenious.Content.Pipeline
 
         }
 
-        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyDefinition createdContentAssembly, string workingDirectory = "")
-            : this(syncContext, createdContentAssembly, null, null, workingDirectory)
+        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyCreatedContent createdContentAssembly, Guid buildId, string contentDirectory, string workingDirectory = "")
+            : this(syncContext, createdContentAssembly, null, null, buildId, contentDirectory, workingDirectory)
         {
             
         }
-        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyDefinition createdContentAssembly, IRenderingSurface surface , GraphicsDevice graphicsDevice, string workingDirectory = "")
-            : base(workingDirectory)
+        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyCreatedContent createdContentAssembly, IRenderingSurface surface , GraphicsDevice graphicsDevice, Guid buildId, string contentDirectory, string workingDirectory = "")
+            : base(buildId, createdContentAssembly, contentDirectory, workingDirectory)
         {
             SyncContext = syncContext;
-            CreatedContentAssembly = createdContentAssembly;
 
             if (surface == null && graphicsDevice != null || surface != null && graphicsDevice == null)
                 throw new ArgumentException($"Either both of {nameof(surface)} and {nameof(graphicsDevice._context)} must be set or not set.");
@@ -56,10 +55,7 @@ namespace engenious.Content.Pipeline
 
         public SynchronizationContext SyncContext { get; }
         public GraphicsDevice GraphicsDevice { get; }
-
-        public AssemblyDefinition CreatedContentAssembly { get; }
-
-
+        
         public override void Dispose()
         {
             //GraphicsDevice.Dispose();

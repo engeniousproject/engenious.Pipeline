@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using engenious.Graphics;
 using engenious.Pipeline;
+using engenious.Pipeline.Extensions;
 using engenious.Pipeline.Helper;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -83,57 +84,10 @@ namespace engenious.Content.Pipeline
             }
         }
 
-        public (FieldDefinition, PropertyDefinition) AddEmptyProperty(TypeDefinition parent, TypeReference propertyType, string name,
-            MethodAttributes? getterAttr = null, MethodAttributes? setterAttr = null, string? fieldName = null)
+        private void GenerateEffectSource(string filename, EffectContent input, string @namespace, string name, ContentProcessorContext context)
         {
-            var p = new PropertyDefinition(name, PropertyAttributes.None, propertyType);
-            var f = new FieldDefinition(fieldName ?? $"'<{name}>k__BackingField'", FieldAttributes.Private | FieldAttributes.SpecialName, propertyType);
-
-            if (getterAttr != null)
-            {
-                var getMethod = new MethodDefinition($"get_{name}", MethodAttributes.HideBySig | MethodAttributes.SpecialName | getterAttr.Value, propertyType);
-
-                p.GetMethod = getMethod;
-                parent.Methods.Add(getMethod);
-            }
-            
-            if (setterAttr != null)
-            {
-                var setMethod = new MethodDefinition($"set_{name}", MethodAttributes.HideBySig | MethodAttributes.SpecialName | setterAttr.Value, parent.Module.TypeSystem.Void);
-                setMethod.Parameters.Add(new ParameterDefinition("value", ParameterAttributes.None, propertyType));
-                p.SetMethod = setMethod;
-                parent.Methods.Add(setMethod);
-            }
-            parent.Fields.Add(f);
-            parent.Properties.Add(p);
-            return (f, p);
-        }
-        public PropertyDefinition AddAutoProperty(TypeDefinition parent, TypeReference propertyType, string name,
-            MethodAttributes? getterAttr = null, MethodAttributes? setterAttr = null)
-        {
-            var (f, p) = AddEmptyProperty(parent, propertyType, name, getterAttr, setterAttr);
-            if (getterAttr != null)
-            {
-                var methodWriter = p.GetMethod.Body.GetILProcessor();
-                methodWriter.Emit(OpCodes.Ldarg_0);
-                methodWriter.Emit(OpCodes.Ldfld, f);
-                methodWriter.Emit(OpCodes.Ret);
-            }
-            
-            if (setterAttr != null)
-            {
-                var methodWriter = p.SetMethod.Body.GetILProcessor();
-                methodWriter.Emit(OpCodes.Ldarg_0);
-                methodWriter.Emit(OpCodes.Ldarg_1);
-                methodWriter.Emit(OpCodes.Stfld, f);
-                methodWriter.Emit(OpCodes.Ret);
-            }
-            return p;
-        }
-
-        private void GenerateEffectSource(ModuleDefinition mainModule,EffectContent input, string @namespace, string name,
-            ContentProcessorContext context)
-        {
+            var mainModule = context.CreatedContent.AssemblyDefinition.MainModule;
+            var createdTypeContainer = context.CreatedContent.AddOrUpdateTypeContainer(context.GetRelativePathToContentDirectory(filename), context.BuildId);
             AssemblyDefinition engeniousAssembly = AssemblyDefinition.ReadAssembly(typeof(Game).Assembly.Location);
             string typeNamespace = "engenious.UserDefined" +
                                      (string.IsNullOrEmpty(@namespace) ? string.Empty : "." + @namespace);
@@ -145,8 +99,8 @@ namespace engenious.Content.Pipeline
             var graphicsDeviceType = mainModule.ImportReference(engeniousAssembly.MainModule.GetType("engenious.Graphics.GraphicsDevice"));
             TypeDefinition typeDefinition =
                 new TypeDefinition(typeNamespace, name, TypeAttributes.Public | TypeAttributes.Class, mainModule.ImportReference(baseType));
-
-            mainModule.Types.Add(typeDefinition);
+            
+            createdTypeContainer.Types.Add(typeDefinition);
             var ctor = new MethodDefinition(".ctor", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName | MethodAttributes.HideBySig, mainModule.TypeSystem.Void);
             ctor.Parameters.Add(new ParameterDefinition(graphicsDeviceType));
             var ctorWriter = ctor.Body.GetILProcessor();
@@ -179,7 +133,7 @@ namespace engenious.Content.Pipeline
             foreach (var technique in input.Techniques)
             {
                 var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique, engeniousAssembly);
-                var p = AddAutoProperty(typeDefinition, techniqueType, technique.Name, MethodAttributes.Public,
+                var (p, _) = typeDefinition.AddAutoProperty(techniqueType, technique.Name, MethodAttributes.Public,
                     MethodAttributes.Private);
                 
                 initializeWriter.Emit(OpCodes.Ldarg_0);
@@ -251,7 +205,7 @@ namespace engenious.Content.Pipeline
             foreach (var pass in technique.Passes)
             {
                 var passType = GenerateEffectPassSource(typeDefinition, pass, engeniousAssembly);
-                var p = AddAutoProperty(typeDefinition, passType, pass.Name, MethodAttributes.Public,
+                var (p, _) = typeDefinition.AddAutoProperty(passType, pass.Name, MethodAttributes.Public,
                     MethodAttributes.Private);
                 
                 initializeWriter.Emit(OpCodes.Ldarg_0);
@@ -391,7 +345,7 @@ namespace engenious.Content.Pipeline
                 cacheParametersWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(paramsGetItem));
                 if (isStandardType)
                 {
-                    var paramProp = AddAutoProperty(typeDefinition, paramType, p.Name,
+                    var (paramProp, _) = typeDefinition.AddAutoProperty(paramType, p.Name,
                         MethodAttributes.Public, MethodAttributes.Private);
                     
                     cacheParametersWriter.Emit(OpCodes.Call, paramProp.SetMethod);
@@ -403,7 +357,7 @@ namespace engenious.Content.Pipeline
                     typeDefinition.Fields.Add(effectPassParamField);
                     cacheParametersWriter.Emit(OpCodes.Stfld, effectPassParamField);
                     
-                    var (paramField, paramProp) = AddEmptyProperty(typeDefinition, paramType, p.Name,
+                    var (paramProp, paramField) = typeDefinition.AddEmptyProperty(paramType, p.Name,
                         MethodAttributes.Public, MethodAttributes.Public, $"_{p.Name}");
                     
                     var getWriter = paramProp.GetMethod.Body.GetILProcessor();
@@ -564,12 +518,12 @@ namespace engenious.Content.Pipeline
 
                 if (input.CreateUserEffect)
                 {
-                    string rel = context.GetRelativePath(filename);
+                    string rel = context.GetRelativePathToWorkingDirectory(filename);
                     string namespce = Path.GetDirectoryName(rel);
                     namespce = namespce.Replace(Path.DirectorySeparatorChar, '.')
                         .Replace(Path.AltDirectorySeparatorChar, '.');
                     var nameWithoutExtension = Path.GetFileNameWithoutExtension(rel);
-                    GenerateEffectSource(context.CreatedContentAssembly.MainModule , input, namespce, nameWithoutExtension, context);
+                    GenerateEffectSource(filename, input, namespce, nameWithoutExtension, context);
                 }
 
                 return input;

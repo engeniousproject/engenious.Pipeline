@@ -8,8 +8,11 @@ namespace engenious.Content.Pipeline
 	{
         public event BuildMessageDel BuildMessage;
 
-	    protected ContentContext (string workingDirectory = "")
-		{
+	    protected ContentContext (Guid buildId, AssemblyCreatedContent createdContent, string contentDirectory, string workingDirectory = "")
+	    {
+		    BuildId = buildId;
+		    CreatedContent = createdContent;
+		    ContentDirectory = contentDirectory;
 			Dependencies = new List<string> ();
 			if (workingDirectory.Length > 0)
 			{
@@ -22,9 +25,12 @@ namespace engenious.Content.Pipeline
 			WorkingDirectory = workingDirectory;
 		}
 
-		public List<string> Dependencies{ get; }
+		public List<string> Dependencies{ get; } // TODO: Used for temporary storage per build file, prevents being able to multithreading of content build
 
-
+		public Guid BuildId { get; }
+		
+		
+		public AssemblyCreatedContent CreatedContent { get; }
 
         public void AddDependency (string file)
 		{
@@ -38,14 +44,31 @@ namespace engenious.Content.Pipeline
         {
             BuildMessage?.Invoke(this, new BuildMessageEventArgs(filename,message, messageType));
         }
+        
+        public string ContentDirectory { get; }
 		
 		public string WorkingDirectory { get; }
 		
-		public string GetRelativePath(string subPath)
+		public string GetRelativePathToWorkingDirectory(string subPath)
 		{
 			try
 			{
-				var parentUri = new Uri(WorkingDirectory);
+				var parentUri = new Uri(WorkingDirectory + "/");
+				var subUri = new Uri(subPath);
+				var relUri = parentUri.MakeRelativeUri(subUri);
+				return relUri.ToString();
+			}
+			catch (Exception ex)
+			{
+				return subPath;
+			}
+		}
+		
+		public string GetRelativePathToContentDirectory(string subPath)
+		{
+			try
+			{
+				var parentUri = new Uri(ContentDirectory + "/");
 				var subUri = new Uri(subPath);
 				var relUri = parentUri.MakeRelativeUri(subUri);
 				return relUri.ToString();

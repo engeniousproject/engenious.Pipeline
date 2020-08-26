@@ -1,20 +1,18 @@
-﻿using System.Collections.Generic;
-using engenious.Pipeline;
+﻿using System;
 using Mono.Cecil;
 
 namespace engenious.Content.Pipeline
 {
     public class ContentImporterContext : ContentContext
     {
-        public ContentImporterContext(AssemblyDefinition createdContentAssembly)
+        public ContentImporterContext(Guid buildId, AssemblyCreatedContent assemblyCreatedContent, string contentDirectory)
+            : base(buildId, assemblyCreatedContent, contentDirectory)
         {
-            CreatedContentAssembly = createdContentAssembly;
         }
 
         public override void Dispose()
         {
         }
-        public AssemblyDefinition CreatedContentAssembly { get; }
     }
 }
 
