@@ -53,7 +53,7 @@ namespace engenious.Content.Pipeline
 		{
 			try
 			{
-				var parentUri = new Uri(WorkingDirectory + "/");
+				var parentUri = new Uri(WorkingDirectory);
 				var subUri = new Uri(subPath);
 				var relUri = parentUri.MakeRelativeUri(subUri);
 				return relUri.ToString();
@@ -68,7 +68,7 @@ namespace engenious.Content.Pipeline
 		{
 			try
 			{
-				var parentUri = new Uri(ContentDirectory + "/");
+				var parentUri = new Uri(ContentDirectory);
 				var subUri = new Uri(subPath);
 				var relUri = parentUri.MakeRelativeUri(subUri);
 				return relUri.ToString();
