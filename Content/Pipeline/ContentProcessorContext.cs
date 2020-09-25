@@ -5,8 +5,8 @@ using System.Threading;
 using engenious.Helper;
 using engenious.Pipeline;
 using Mono.Cecil;
-using OpenToolkit.Windowing.Common;
-using OpenToolkit.Windowing.Desktop;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
 
 namespace engenious.Content.Pipeline
 {

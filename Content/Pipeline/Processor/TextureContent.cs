@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using engenious.Content.Serialization;
 using engenious.Graphics;
 using engenious.Helper;
-using OpenToolkit.Graphics.OpenGL;
+using OpenTK.Graphics.OpenGL;
 
 namespace engenious.Content.Pipeline
 {
@@ -57,7 +57,7 @@ namespace engenious.Content.Pipeline
                 else if (_graphicsDevice.DriverVersion.Major < 3)
                     throw new NotSupportedException("Can't generate MipMaps on this Hardware");
             }
-            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenToolkit.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenToolkit.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenToolkit.Graphics.OpenGL.PixelFormat)inputFormat : OpenToolkit.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, inputData);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, inputData);
             if (doGenerate)
             {
                 //TOODO non power of 2 Textures?
@@ -107,7 +107,7 @@ namespace engenious.Content.Pipeline
                     var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0,0,width,height),ImageLockMode.WriteOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
                     GL.BindTexture(TextureTarget.Texture2D,_texture);
-                    GL.GetTexImage(TextureTarget.Texture2D,i,OpenToolkit.Graphics.OpenGL.PixelFormat.Bgra,PixelType.UnsignedByte,bmpData.Scan0);
+                    GL.GetTexImage(TextureTarget.Texture2D,i,OpenTK.Graphics.OpenGL.PixelFormat.Bgra,PixelType.UnsignedByte,bmpData.Scan0);
 
                     bmp.UnlockBits(bmpData);
 

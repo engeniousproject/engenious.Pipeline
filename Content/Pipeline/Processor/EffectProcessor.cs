@@ -11,7 +11,7 @@ using engenious.Pipeline.Helper;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
-using OpenToolkit.Graphics.OpenGL;
+using OpenTK.Graphics.OpenGL;
 
 namespace engenious.Content.Pipeline
 {
