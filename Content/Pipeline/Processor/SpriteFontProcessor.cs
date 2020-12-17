@@ -50,15 +50,10 @@ namespace engenious.Pipeline
                         switch (PlatformHelper.RunningPlatform())
                         {
                             case Platform.Windows:
-                                string arch = Environment.Is64BitProcess ? "x64" : "x86";
-                                string dllPath = Path.Combine(
-                                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                                    arch);
-                                return NativeLibrary.Load(Path.Combine(dllPath, "freetype6.dll"));
+                                return NativeLibrary.Load("freetype6.dll", assembly, path);
                             case Platform.Linux:
-                                return NativeLibrary.Load("libfreetype.so");
                             case Platform.Mac:
-                                return NativeLibrary.Load("libfreetype.dylib");
+                                return NativeLibrary.Load("freetype", assembly, path);
                         }
 
                     }
