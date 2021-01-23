@@ -264,7 +264,7 @@ namespace engenious.Content.Pipeline
                 var propertyType = mainModule.ImportReference(parameterReferences[0].ParameterInfo.Type);
                 var prop = new PropertyDefinition(name, PropertyAttributes.None, propertyType);
                 var setter =
-                    new MethodDefinition($"set_{name}", MethodAttributes.HideBySig | MethodAttributes.SpecialName,
+                    new MethodDefinition($"set_{name}", MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.Public,
                         parent.Module.TypeSystem.Void);
                 setter.Parameters.Add(new ParameterDefinition("value", ParameterAttributes.None, propertyType));
                 typeDefinition.Methods.Add(setter);
