@@ -202,6 +202,9 @@ namespace engenious.Content.Pipeline
             initializeWriter.Emit(OpCodes.Call, mainModule.ImportReference(passesProperty.GetMethod));
             initializeWriter.Emit(OpCodes.Stloc_0);
             var passesGetItem = passesProperty.PropertyType.Resolve().Methods.First(x => x.Parameters.Count == 1 && x.Name == "get_Item" && x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
+
+            var passTypeDefinitions = new Dictionary<string, (TypeDefinition,PropertyDefinition)>();
+            
             foreach (var pass in technique.Passes)
             {
                 var passType = GenerateEffectPassSource(typeDefinition, pass, engeniousAssembly);
@@ -215,6 +218,7 @@ namespace engenious.Content.Pipeline
                 
                 initializeWriter.Emit(OpCodes.Isinst, passType);
                 initializeWriter.Emit(OpCodes.Call, p.SetMethod);
+                passTypeDefinitions.Add(pass.Name, (passType, p));
             }
             
             initializeWriter.Emit(OpCodes.Ret);
@@ -252,31 +256,36 @@ namespace engenious.Content.Pipeline
                 }
             }
 
-            
-            
-            /*
-             TODO: 
-             foreach (var p in parameters)
-            {
-                if (p.Value == null || p.Value.Count == 0)
-                    continue;
-                var type = p.Value[0].ParameterInfo.Type;
-                src.WriteLine($"public {type} {p.Key}");
-                src.WriteLine("{");
-                src.Indent++;
-                src.WriteLine("set");
-                src.WriteLine("{");
-                src.Indent++;
-                foreach (var subP in p.Value)
-                {
-                    src.WriteLine($"{subP.Pass.Name}.{subP.ParameterInfo.Name} = value;");
-                }
 
-                src.Indent--;
-                src.WriteLine("}");
-                src.Indent--;
-                src.WriteLine("}");
-            }*/
+            foreach (var (name,parameterReferences) in parameters)
+            {
+                if (parameterReferences == null || parameterReferences.Count == 0)
+                    continue;
+                var propertyType = mainModule.ImportReference(parameterReferences[0].ParameterInfo.Type);
+                var prop = new PropertyDefinition(name, PropertyAttributes.None, propertyType);
+                var setter =
+                    new MethodDefinition($"set_{name}", MethodAttributes.HideBySig | MethodAttributes.SpecialName,
+                        parent.Module.TypeSystem.Void);
+                setter.Parameters.Add(new ParameterDefinition("value", ParameterAttributes.None, propertyType));
+                typeDefinition.Methods.Add(setter);
+                prop.SetMethod = setter;
+                typeDefinition.Properties.Add(prop);
+
+                var setterWriter = setter.Body.GetILProcessor();
+                
+                foreach (var parameterReference in parameterReferences)
+                {
+                    var (passType, passProperty) = passTypeDefinitions[parameterReference.Pass.Name];
+                    var basePassProperty = passType.Properties.First(x => x.Name == name);
+                    
+                    setterWriter.Emit(OpCodes.Ldarg_0);
+                    setterWriter.Emit(OpCodes.Call, passProperty.GetMethod);
+                    setterWriter.Emit(OpCodes.Ldarg_1);
+                    setterWriter.Emit(OpCodes.Call, basePassProperty.SetMethod);
+
+                    setterWriter.Emit(OpCodes.Ret);
+                }
+            }
 
             return typeDefinition;
         }
