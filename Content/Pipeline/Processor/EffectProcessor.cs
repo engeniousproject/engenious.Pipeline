@@ -406,7 +406,29 @@ namespace engenious.Content.Pipeline
                     setWriter.Emit(OpCodes.Ret);
 
 
-                    var opEquality = resolvedParamType.Methods.FirstOrDefault(x => x.Name == "op_Equality");
+                    static MethodDefinition FindMatchingMethod(TypeDefinition resolvedParamType, Func<MethodDefinition, bool> methodConstrainer)
+                    {
+                        var res = resolvedParamType.Methods.FirstOrDefault(methodConstrainer);
+                        if (res != null)
+                            return res;
+                        var curParamType = resolvedParamType;
+                        while (res == null)
+                        {
+                            curParamType = curParamType.BaseType?.Resolve();
+                            if (curParamType == null)
+                                return null;
+                            res = curParamType.Methods.FirstOrDefault(methodConstrainer);
+                        }
+
+                        return res;
+                    }
+
+                    MethodDefinition opEquality = null;
+                    if (!resolvedParamType.IsPrimitive)
+                        opEquality = FindMatchingMethod(resolvedParamType,
+                                         x => x.Name == "op_Equality" && !x.HasThis && x.Parameters.Count == 2 && x.Parameters[0].ParameterType == x.Parameters[1].ParameterType && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType))
+                                     ??  FindMatchingMethod(resolvedParamType, x => x.Name == "Equals" && x.HasThis && x.Parameters.Count == 1
+                                         && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
 
                     if (opEquality != null)
                     {
