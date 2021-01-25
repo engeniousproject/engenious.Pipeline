@@ -339,6 +339,7 @@ namespace engenious.Content.Pipeline
             cacheParametersWriter.Emit(OpCodes.Call, mainModule.ImportReference(paramsProperty.GetMethod));
             cacheParametersWriter.Emit(OpCodes.Stloc_0);
             var paramsGetItem = paramsProperty.PropertyType.Resolve().Methods.First(x => x.Parameters.Count == 1 && x.Name == "get_Item" && x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
+            
             foreach (var p in pass.Parameters)
             {
                 var paramType = mainModule.ImportReference(p.Type.ToCecilTypeRef().Resolve());
@@ -375,6 +376,8 @@ namespace engenious.Content.Pipeline
                     getWriter.Emit(OpCodes.Ret);
 
                     var setWriter = paramProp.SetMethod.Body.GetILProcessor();
+
+                    var retOp = setWriter.Create(OpCodes.Ret);
                     setWriter.Emit(OpCodes.Ldarg_0);
                     setWriter.Emit(OpCodes.Ldfld, paramField);
                     
@@ -403,7 +406,7 @@ namespace engenious.Content.Pipeline
                     });
                     setWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(setValue));
                     
-                    setWriter.Emit(OpCodes.Ret);
+                    setWriter.Append(retOp);
 
 
                     static MethodDefinition FindMatchingMethod(TypeDefinition resolvedParamType, Func<MethodDefinition, bool> methodConstrainer)
@@ -432,6 +435,26 @@ namespace engenious.Content.Pipeline
 
                     if (opEquality != null)
                     {
+                        if (opEquality.Name == "Equals")
+                        {
+                            var valNullCheck = setWriter.Create(OpCodes.Ldarg_1);
+                            var earlyExit = setWriter.Create(OpCodes.Ret);
+                            var jump = setWriter.Create(OpCodes.Bne_Un, valNullCheck);
+                            setWriter.InsertAfter(insertPos, jump);
+                            setWriter.InsertAfter(jump, earlyExit);
+                            setWriter.InsertAfter(earlyExit, valNullCheck);
+                            insertPos = setWriter.Create(OpCodes.Brfalse_S, branch);
+                            setWriter.InsertAfter(valNullCheck, insertPos);
+
+                            var ldArg1 = setWriter.Create(OpCodes.Ldarg_1);
+                            setWriter.InsertAfter(insertPos, ldArg1);
+                            insertPos = Instruction.Create(OpCodes.Ldarg_0);
+                            setWriter.InsertAfter(ldArg1, insertPos);
+
+                            var ldFld = setWriter.Create(OpCodes.Ldfld, effectPassParamField);
+                            setWriter.InsertAfter(insertPos, ldFld);
+                            insertPos = ldFld;
+                        }
                         var eqCheck = setWriter.Create(OpCodes.Call, mainModule.ImportReference(opEquality));
                         setWriter.InsertAfter(insertPos, eqCheck);
                     
