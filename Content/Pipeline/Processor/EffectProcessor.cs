@@ -472,7 +472,7 @@ namespace engenious.Content.Pipeline
             return typeDefinition;
         }
 
-        private Type getType(EffectParameterType type)
+        private static Type GetType(EffectParameterType type)
         {
             Type t;
             switch (type)
@@ -499,9 +499,11 @@ namespace engenious.Content.Pipeline
                     t = typeof(Vector4);
                     break;
                 case EffectParameterType.Sampler2D:
+                case EffectParameterType.Sampler2DShadow:
                     t = typeof(Texture2D);
                     break;
                 case EffectParameterType.Sampler2DArray:
+                case EffectParameterType.Sampler2DArrayShadow:
                     t = typeof(Texture2DArray);
                     break;
                 case EffectParameterType.Int:
@@ -562,7 +564,7 @@ namespace engenious.Content.Pipeline
 
                         foreach (var p in compiledPass.Parameters)
                         {
-                            pass.Parameters.Add(new ParameterInfo(p.Name, getType(p.Type)));
+                            pass.Parameters.Add(new ParameterInfo(p.Name, GetType(p.Type)));
                         }
                     }
                 }
