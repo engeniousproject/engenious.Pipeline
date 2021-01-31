@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using engenious.Graphics;
 using System.Threading;
 using engenious.Helper;
@@ -25,6 +26,66 @@ namespace engenious.Content.Pipeline
         {
             
         }
+
+        private class ContentProcessorControl : IRenderingSurface
+        {
+            public ContentProcessorControl(INativeWindow windowInfo)
+            {
+                WindowInfo = windowInfo;
+            }
+
+            public void Dispose()
+            {
+            }
+
+            public Point PointToScreen(Point pt)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Point PointToClient(Point pt)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Vector2 Vector2ToScreen(Vector2 pt)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Vector2 Vector2ToClient(Vector2 pt)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Rectangle ClientRectangle { get; set; }
+            public Size ClientSize { get; set; }
+            public bool Focused { get; }
+            public bool CursorVisible { get; set; }
+            public bool CursorGrabbed { get; set; }
+            public bool Visible { get; set; }
+            public IntPtr Handle { get; }
+            public INativeWindow WindowInfo { get; }
+            public event Action<FrameEventArgs> RenderFrame;
+            public event Action<FrameEventArgs> UpdateFrame;
+            public event Action<CancelEventArgs> Closing;
+            public event Action<FocusedChangedEventArgs> FocusedChanged;
+            public event Action<TextInputEventArgs> KeyPress;
+            public event Action<ResizeEventArgs> Resize;
+            public event Action Load;
+            public event Action<MouseWheelEventArgs> MouseWheel;
+        }
+
+        private class ContentProcessorGame : Game<IRenderingSurface>
+        {
+            public ContentProcessorGame(IRenderingSurface surface, IGraphicsContext context)
+            {
+                ConstructContext(surface, context);
+                InitializeControl();
+            }
+
+        }
+        
         public ContentProcessorContext(SynchronizationContext syncContext, AssemblyCreatedContent createdContentAssembly, IRenderingSurface surface , GraphicsDevice graphicsDevice, Guid buildId, string contentDirectory, string workingDirectory = "")
             : base(buildId, createdContentAssembly, contentDirectory, workingDirectory)
         {
@@ -39,18 +100,18 @@ namespace engenious.Content.Pipeline
                 var nativeWindowSettings = new NativeWindowSettings();
                 nativeWindowSettings.StartVisible = false;
                 var window = new GameWindow(GameWindowSettings.Default, nativeWindowSettings);
+                surface = new ContentProcessorControl(window);
                 context = window.Context;
             }
             else
             {
+                
                 context = graphicsDevice._context;
             }
 
             context.MakeCurrent();
 
-            ThreadingHelper.Initialize(null, null);
-
-            GraphicsDevice = new GraphicsDevice(null, ThreadingHelper.Context);
+            GraphicsDevice = new ContentProcessorGame(surface, context).GraphicsDevice;
         }
 
         public SynchronizationContext SyncContext { get; }
@@ -58,7 +119,7 @@ namespace engenious.Content.Pipeline
         
         public override void Dispose()
         {
-            //GraphicsDevice.Dispose();
+            GraphicsDevice.Game.Dispose();
             //Window.Dispose();
         }
     }
