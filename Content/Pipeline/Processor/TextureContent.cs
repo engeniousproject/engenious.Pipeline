@@ -38,7 +38,7 @@ namespace engenious.Content.Pipeline
             MipMaps = new List<TextureContentMipMap>();
             bool hwCompressedInput = inputFormat == TextureContentFormat.DXT1 || inputFormat == TextureContentFormat.DXT3 || inputFormat == TextureContentFormat.DXT5;
             bool hwCompressedOutput = outputFormat == TextureContentFormat.DXT1 || outputFormat == TextureContentFormat.DXT3 || outputFormat == TextureContentFormat.DXT5;
-            graphicsDevice.ValidateGraphicsThread();
+            graphicsDevice.ValidateUiGraphicsThread();
 
             _texture = GL.GenTexture();
 
@@ -83,7 +83,7 @@ namespace engenious.Content.Pipeline
 
         private void PreprocessMipMaps(GraphicsDevice graphicsDevice)
         {
-            graphicsDevice.ValidateGraphicsThread();
+            graphicsDevice.ValidateUiGraphicsThread();
             bool hwCompressed = Format == TextureContentFormat.DXT1 || Format == TextureContentFormat.DXT3 || Format == TextureContentFormat.DXT5;
             int width=Width, height=Height;
             int realCount=0;
