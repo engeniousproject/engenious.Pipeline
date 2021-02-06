@@ -5,6 +5,7 @@
         public enum BuildMessageType
         {
             None,
+            Success,
             Warning,
             Error,
             Information
