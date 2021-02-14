@@ -25,14 +25,15 @@ namespace engenious.Pipeline
         }
 		public FontConfigWindows()
 		{
+#pragma warning disable CA1416
 		    var fontKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
 		    if (fontKey == null)
 		        return;
 		    foreach (string fontName in fontKey.GetValueNames())
 		    {
 		        var value = fontKey.GetValue(fontName, null);
-		        if (value == null) continue;
-		        var file = value.ToString();
+                var file = value?.ToString();
+		        if (file == null) continue;
 		        if (FindFondFile(ref file))
 		        {
 		            string name = fontName;
@@ -41,12 +42,13 @@ namespace engenious.Pipeline
 		            _fontFileMap.Add(name, file);
 		        }
 		    }
+#pragma warning restore CA1416
 		}
 
         #region implemented abstract members of FontConfig
        
 
-        public override bool GetFontFile(string fontName, int fontSize, FontStyle style,out string fileName)
+        public override bool GetFontFile(string fontName, int fontSize, FontStyle style, out string? fileName)
         {
             fileName = null;
 
@@ -55,6 +57,8 @@ namespace engenious.Pipeline
             var names = GetFontNames(fnt);
             foreach (var name in names)
             {
+                if (name.Name == null)
+                    continue;
                 if (_fontFileMap.TryGetValue(name.Name, out fileName))
                     break;
             }
@@ -110,7 +114,7 @@ namespace engenious.Pipeline
         [DllImport("gdi32.dll", EntryPoint = "SelectObject")]
         private static extern IntPtr SelectObject([In] IntPtr hdc, [In] IntPtr hgdiobj);
         [DllImport("gdi32.dll")]
-        private static extern uint GetFontData(IntPtr hdc, uint dwTable, uint dwOffset, [Out] byte[] lpvBuffer, uint cbData);
+        private static extern uint GetFontData(IntPtr hdc, uint dwTable, uint dwOffset, [Out] byte[]? lpvBuffer, uint cbData);
 
         private const uint NameTableKey = 0x656D616E;
         /// <summary>
@@ -164,11 +168,8 @@ namespace engenious.Pipeline
             private readonly ushort _nameLength;
             private readonly ushort _byteOffset;
 
-            public string Name { get; private set; }
-
-
-
-
+            public string? Name { get; private set; }
+            
             /// <summary>
             /// Gets a value indicating whether this <see cref="NameRecord"/> represents a Windows Unicode full font name.
             /// </summary>

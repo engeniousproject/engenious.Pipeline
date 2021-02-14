@@ -11,7 +11,7 @@ namespace engenious.Pipeline
     {
         #region implemented abstract members of ContentProcessor
 
-        public override AudioContent Process(FFmpegContent input, string filename, ContentProcessorContext context)
+        public override AudioContent? Process(FFmpegContent input, string filename, ContentProcessorContext context)
         {
             try
             {
@@ -27,8 +27,12 @@ namespace engenious.Pipeline
                         break;
                 }
                 var process = ff.RunCommand($"-i \"{filename}\" {args} -nostdin pipe:1 -hide_banner -loglevel error");
-                var outputStream = process.StandardOutput.BaseStream as FileStream;
-
+                var outputStream = process.StandardOutput.BaseStream;
+                // if (outputStream == null)
+                // {
+                //     context.RaiseBuildMessage(filename, "error: ffmpeg: could not read from stdout", BuildMessageEventArgs.BuildMessageType.Error);
+                //     return null;
+                // }
                 var output = new AudioContent(settings.OutputFormat, outputStream);
                 process.WaitForExit();
                 var err = process.StandardError.ReadToEnd();//TODO: error handling

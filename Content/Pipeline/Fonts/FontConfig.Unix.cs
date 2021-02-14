@@ -4,11 +4,27 @@ using System.Linq;
 
 namespace engenious.Pipeline
 {
-    public class FontConfigUnix:FontConfig
+    public class FontConfigUnix : FontConfig
     {
-        protected FontConfigUnix()
+        protected FontConfigUnix(Func<IntPtr> fcInitLoadConfigAndFonts,
+                                Func<IntPtr> fcPatternCreate,
+                                Func<string,IntPtr> fcNameParse,
+                                Func<IntPtr,IntPtr,FcMatchKind,bool> fcConfigSubstitute,
+                                Action<IntPtr> fcDefaultSubstitute,
+                                FcFontMatchDelegate fcFontMatch,
+                                Action<IntPtr> fcPatternDestroy,
+                                FcPatternGetStringDelegate fcPatternGetString)
         {
+            FcInitLoadConfigAndFonts = fcInitLoadConfigAndFonts;
+            FcPatternCreate = fcPatternCreate;
+            FcNameParse = fcNameParse;
+            FcConfigSubstitute = fcConfigSubstitute;
+            FcDefaultSubstitute = fcDefaultSubstitute;
+            FcFontMatch = fcFontMatch;
+            FcPatternDestroy = fcPatternDestroy;
+            FcPatternGetString = fcPatternGetString;
         }
+
         protected enum FcMatchKind {
             FcMatchPattern = 0,
             FcMatchFont = 1
@@ -34,7 +50,7 @@ namespace engenious.Pipeline
 
         #region implemented abstract members of FontConfig
 
-        public override bool GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style,out string fileName)
+        public override bool GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style, out string? fileName)
         {
             fileName = null;
             var config = FcInitLoadConfigAndFonts();

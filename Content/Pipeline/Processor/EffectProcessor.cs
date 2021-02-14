@@ -208,6 +208,10 @@ namespace engenious.Content.Pipeline
             foreach (var pass in technique.Passes)
             {
                 var passType = GenerateEffectPassSource(typeDefinition, pass, engeniousAssembly);
+                if (passType == null)
+                {
+                    throw new Exception($"Unable to create IL code for {pass.Name} EffectPass");
+                }
                 var (p, _) = typeDefinition.AddAutoProperty(passType, pass.Name, MethodAttributes.Public,
                     MethodAttributes.Private);
                 
@@ -223,13 +227,12 @@ namespace engenious.Content.Pipeline
             
             initializeWriter.Emit(OpCodes.Ret);
 
-            var parameters = new Dictionary<string, List<ParameterReference>>();
+            var parameters = new Dictionary<string, List<ParameterReference>?>();
             foreach (var pass in technique.Passes)
             {
                 foreach (var param in pass.Parameters)
                 {
-                    List<ParameterReference> paramList;
-                    if (!parameters.TryGetValue(param.Name, out paramList))
+                    if (!parameters.TryGetValue(param.Name, out var paramList))
                     {
                         paramList = new List<ParameterReference>();
                     }
@@ -290,7 +293,7 @@ namespace engenious.Content.Pipeline
             return typeDefinition;
         }
         
-        private TypeDefinition GenerateEffectPassSource(TypeDefinition parent, EffectPass pass, AssemblyDefinition engeniousAssembly)
+        private TypeDefinition? GenerateEffectPassSource(TypeDefinition parent, EffectPass pass, AssemblyDefinition engeniousAssembly)
         {
             var mainModule = parent.Module;
             
@@ -409,7 +412,7 @@ namespace engenious.Content.Pipeline
                     setWriter.Append(retOp);
 
 
-                    static MethodDefinition FindMatchingMethod(TypeDefinition resolvedParamType, Func<MethodDefinition, bool> methodConstrainer)
+                    static MethodDefinition? FindMatchingMethod(TypeDefinition resolvedParamType, Func<MethodDefinition, bool> methodConstrainer)
                     {
                         var res = resolvedParamType.Methods.FirstOrDefault(methodConstrainer);
                         if (res != null)
@@ -426,7 +429,7 @@ namespace engenious.Content.Pipeline
                         return res;
                     }
 
-                    MethodDefinition opEquality = null;
+                    MethodDefinition? opEquality = null;
                     if (!resolvedParamType.IsPrimitive)
                         opEquality = FindMatchingMethod(resolvedParamType,
                                          x => x.Name == "op_Equality" && !x.HasThis && x.Parameters.Count == 2 && x.Parameters[0].ParameterType == x.Parameters[1].ParameterType && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType))
@@ -523,7 +526,7 @@ namespace engenious.Content.Pipeline
             return t;
         }
 
-        public override EffectContent Process(EffectContent input, string filename, ContentProcessorContext context)
+        public override EffectContent? Process(EffectContent input, string filename, ContentProcessorContext context)
         {
             try
             {
@@ -575,9 +578,9 @@ namespace engenious.Content.Pipeline
                 if (input.CreateUserEffect)
                 {
                     string rel = context.GetRelativePathToWorkingDirectory(filename);
-                    string namespce = Path.GetDirectoryName(rel);
-                    namespce = namespce.Replace(Path.DirectorySeparatorChar, '.')
-                        .Replace(Path.AltDirectorySeparatorChar, '.');
+                    var namespce = Path.GetDirectoryName(rel);
+                    namespce = namespce?.Replace(Path.DirectorySeparatorChar, '.')
+                        .Replace(Path.AltDirectorySeparatorChar, '.') ?? string.Empty;
                     var nameWithoutExtension = Path.GetFileNameWithoutExtension(rel);
                     GenerateEffectSource(filename, input, namespce, nameWithoutExtension, context);
                 }

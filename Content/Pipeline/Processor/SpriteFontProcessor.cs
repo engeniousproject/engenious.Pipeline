@@ -24,10 +24,11 @@ namespace engenious.Pipeline
         static extern bool SetDllDirectory(string lpPathName);
 
         #region implemented abstract members of ContentProcessor
-        public override CompiledSpriteFont Process(SpriteFontContent input, string filename, ContentProcessorContext context)
+        public override CompiledSpriteFont? Process(SpriteFontContent input, string filename, ContentProcessorContext context)
         {
-            string fontFile;
-            if (!FontConfig.Instance.GetFontFile(input.FontName, input.Size, input.Style, out fontFile))
+            if (input.FontName == null)
+                throw new ArgumentException("SpriteFontContent did not have a valid FontName", nameof(input));
+            if (!FontConfig.Instance.GetFontFile(input.FontName, input.Size, input.Style, out var fontFile))
                 context.RaiseBuildMessage(filename, $"'{input.FontName}' was not found, using fallback font", BuildMessageEventArgs.BuildMessageType.Warning);
 
             if (fontFile == null)
@@ -83,7 +84,7 @@ namespace engenious.Pipeline
             var characters = input.CharacterRegions.SelectMany(
                 r => r.GetChararcters().Select(c => Tuple.Create(c, face.GetCharIndex(c)))).Where(x=>x.Item2 != 0).ToList();
 
-            var bitmaps = new List<Tuple<char, FTBitmap,int,GlyphMetrics>>();
+            var bitmaps = new List<(char, FTBitmap?, int, GlyphMetrics)>();
 
             compiled.LineSpacing = face.Size.Metrics.Height.Value>>6;
             compiled.BaseLine = face.Size.Metrics.Ascender.Value>>6;
@@ -122,7 +123,7 @@ namespace engenious.Pipeline
                     totalWidth += 2+1;
                     maxWidth = Math.Max(maxWidth,1+2);
                     maxHeight = Math.Max(maxHeight,1+2);
-                    bitmaps.Add(Tuple.Create(character, (FTBitmap)null, glyph.Advance.X.Value>>6,glyph.Metrics));
+                    bitmaps.Add((character, (FTBitmap?)null, glyph.Advance.X.Value>>6,glyph.Metrics));
                 }
                 else
                 {
@@ -130,7 +131,7 @@ namespace engenious.Pipeline
                     totalWidth += 2+bmp.Width;
                     maxWidth = Math.Max(maxWidth,bmp.Width+2);//TODO: divide by 3?
                     maxHeight = Math.Max(maxHeight,bmp.Rows+2);
-                    bitmaps.Add(Tuple.Create(character, bmp, glyph.Advance.X.Value>>6,glyph.Metrics));
+                    bitmaps.Add((character, bmp, glyph.Advance.X.Value >> 6, glyph.Metrics));
                 }
 
             }

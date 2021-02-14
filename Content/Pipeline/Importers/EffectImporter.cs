@@ -77,7 +77,7 @@ namespace engenious.Content.Pipeline
                 throw new Exception("Empty value not allowed for Colors");
             try
             {
-                FieldInfo fI = typeof(Color).GetField(el.InnerText.Trim(), BindingFlags.Static);
+                var fI = typeof(Color).GetField(el.InnerText.Trim(), BindingFlags.Static);
                 var value = fI?.GetValue(null);
                 if (value != null) return (Color)value;
             }
@@ -125,7 +125,7 @@ namespace engenious.Content.Pipeline
             }
         }
 
-        private static BlendState ParseBlendState(XmlElement element)
+        private static BlendState? ParseBlendState(XmlElement element)
         {
             if (!element.HasChildNodes || element.Name != "BlendState")
                 return null;
@@ -166,7 +166,7 @@ namespace engenious.Content.Pipeline
             return blendState;
         }
 
-        private static DepthStencilState ParseDepthStencilState(XmlElement element)
+        private static DepthStencilState? ParseDepthStencilState(XmlElement element)
         {
             if (!element.HasChildNodes || element.Name != "DepthStencilState")
                 return null;
@@ -211,7 +211,7 @@ namespace engenious.Content.Pipeline
             return depthStencilState;
         }
 
-        private static RasterizerState ParseRasterizerState(XmlElement element)
+        private static RasterizerState? ParseRasterizerState(XmlElement element)
         {
             if (!element.HasChildNodes || element.Name != "RasterizerState")
                 return null;
@@ -239,7 +239,7 @@ namespace engenious.Content.Pipeline
             return rasterizerState;
         }
 
-        public override EffectContent Import(string filename, ContentImporterContext context)
+        public override EffectContent? Import(string filename, ContentImporterContext context)
         {
             try
             {
@@ -247,7 +247,7 @@ namespace engenious.Content.Pipeline
 
                 XmlDocument doc = new XmlDocument();
                 doc.Load(filename);
-                XmlNode current = doc.FirstChild;
+                XmlNode? current = doc.FirstChild;
                 while (current != null && current.NodeType != XmlNodeType.Element)
                 {
                     current = current.NextSibling;
@@ -261,8 +261,7 @@ namespace engenious.Content.Pipeline
                     info.Name = technique.GetAttribute("name");
                     foreach (XmlElement pass in technique.ChildNodes.OfType<XmlElement>())
                     {
-                        EffectPass pi = new EffectPass();
-                        pi.Name = pass.GetAttribute("name");
+                        EffectPass pi = new EffectPass(pass.GetAttribute("name"));
                         foreach (XmlElement sh in pass.ChildNodes.OfType<XmlElement>())
                         {
                             if (sh.Name == "Shader")
@@ -270,7 +269,9 @@ namespace engenious.Content.Pipeline
                                 ShaderType type = ParseShaderType(sh.GetAttribute("type"));
                                 if ((int)type == -1)
                                     throw new Exception("Unsupported Shader type detected");
-                                string shaderFile = Path.Combine(Path.GetDirectoryName(filename), sh.GetAttribute("filename"));
+                                var fnAttr = sh.GetAttribute("filename");
+                                var dirName = Path.GetDirectoryName(filename);
+                                string shaderFile = dirName == null ? fnAttr : Path.Combine(dirName, fnAttr);
                                 pi.Shaders.Add(type, shaderFile);
                                 context.Dependencies.Add(shaderFile);
 
@@ -331,8 +332,8 @@ namespace engenious.Content.Pipeline
             Techniques = new List<EffectTechnique>();
         }
         public bool CreateUserEffect { get; internal set; }
-        public string UserEffectName { get; internal set; }
-        public List<EffectTechnique> Techniques{ get; private set; }
+        public string? UserEffectName { get; internal set; }
+        public List<EffectTechnique> Techniques{ get; }
     }
 
     public class EffectTechnique
@@ -340,28 +341,31 @@ namespace engenious.Content.Pipeline
         public EffectTechnique()
         {
             Passes = new List<EffectPass>();
+            Name = null!;
+            UserTechniqueName = null!;
         }
 
         public string Name{ get; internal set; }
         public string UserTechniqueName { get; internal set; }
-        public List<EffectPass> Passes{ get; private set; }
+        public List<EffectPass> Passes{ get; }
     }
     public class EffectPass
     {
-        public EffectPass()
+        public EffectPass(string name)
         {
+            Name = name;
             Shaders = new Dictionary<ShaderType, string>();
             Attributes = new Dictionary<VertexElementUsage,string>(); 
             Parameters = new List<ParameterInfo>();
         }
 
-        public string Name{ get; internal set; }
+        public string Name{ get; }
 
-        public BlendState BlendState{ get; internal set; }
+        public BlendState? BlendState { get; internal set; }
 
-        public DepthStencilState DepthStencilState{ get; internal set; }
+        public DepthStencilState? DepthStencilState { get; internal set; }
 
-        public RasterizerState RasterizerState{ get; internal set; }
+        public RasterizerState? RasterizerState { get; internal set; }
 
         public Dictionary<ShaderType,string> Shaders{ get; private set; }
 

@@ -7,7 +7,7 @@ namespace engenious.Content.Serialization
     {
         #region implemented abstract members of ContentTypeWriter
 
-        public override void Write(ContentWriter writer, RasterizerState value)
+        public override void Write(ContentWriter writer, RasterizerState? value)
         {
             if (value == null)
             {
@@ -25,17 +25,17 @@ namespace engenious.Content.Serialization
             writer.Write(value.SlopeScaleDepthBias);
         }
 
-        public override string RuntimeReaderName => typeof(RasterizerStateTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(RasterizerStateTypeReader).FullName!;
 
         #endregion
     }
 
     [ContentTypeWriter]
-    public class DepthStencilStateTypeWriter  : ContentTypeWriter<DepthStencilState>
+    public class DepthStencilStateTypeWriter : ContentTypeWriter<DepthStencilState>
     {
         #region implemented abstract members of ContentTypeWriter
 
-        public override void Write(ContentWriter writer, DepthStencilState value)
+        public override void Write(ContentWriter writer, DepthStencilState? value)
         {
             if (value == null)
             {
@@ -63,7 +63,7 @@ namespace engenious.Content.Serialization
             writer.Write((ushort)value.CounterClockwiseStencilPass);
         }
 
-        public override string RuntimeReaderName => typeof(DepthStencilStateTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(DepthStencilStateTypeReader).FullName!;
 
         #endregion
     }
@@ -73,7 +73,7 @@ namespace engenious.Content.Serialization
     {
         #region implemented abstract members of ContentTypeWriter
 
-        public override void Write(ContentWriter writer, BlendState value)
+        public override void Write(ContentWriter writer, BlendState? value)
         {
             if (value == null)
             {
@@ -95,7 +95,7 @@ namespace engenious.Content.Serialization
             writer.Write((byte)value.ColorWriteChannels3);
         }
 
-        public override string RuntimeReaderName => typeof(BlendStateTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(BlendStateTypeReader).FullName!;
 
         #endregion
     }

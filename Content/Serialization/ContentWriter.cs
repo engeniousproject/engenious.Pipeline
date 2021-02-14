@@ -14,18 +14,24 @@ namespace engenious.Content.Serialization
 
         public void WriteObject(object value)
         {
-            IContentTypeWriter typeWriter = SerializationManager.Instance.GetWriter(value.GetType());
+            var typeWriter = SerializationManager.Instance.GetWriter(value.GetType());
+            if (typeWriter == null)
+                throw new ArgumentException("No valid type writer found for object.", nameof(value));
             Write(typeWriter.RuntimeReaderName);
             typeWriter.Write(this, value);
         }
 
         public void WriteObject<T>(T value)
         {
-            WriteObject(value, SerializationManager.Instance.GetWriter(typeof(T)));
+            var typeWriter = SerializationManager.Instance.GetWriter(typeof(T));
+            if (typeWriter == null)
+                throw new ArgumentException("No valid type writer found for object.", nameof(value));
+            WriteObject(value, typeWriter);
         }
 
         public void WriteObject<T>(T value, IContentTypeWriter typeWriter)
         {
+            // if (value == null) throw new ArgumentNullException(nameof(value));
             Write(typeWriter.RuntimeReaderName);
             typeWriter.Write(this, value);
         }

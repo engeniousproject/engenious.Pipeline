@@ -147,12 +147,10 @@ namespace engenious.Content.Pipeline
         }
         private static void ReadObject(XElement nodes,object obj)
         {
-
             var props = TypeDescriptor.GetProperties(obj).OfType<PropertyDescriptor>().ToDictionary(x => x.Name, x => x);
             foreach (var setting in nodes.Elements())
             {
-                PropertyDescriptor property;
-                if (props.TryGetValue(setting.Name.LocalName, out property))
+                if (props.TryGetValue(setting.Name.LocalName, out var property))
                 {
                     
                     var val = setting.Nodes().OfType<XText>().FirstOrDefault()?.Value;
@@ -174,9 +172,12 @@ namespace engenious.Content.Pipeline
                     }
                     else
                     {
-                        var tmp =Activator.CreateInstance(property.PropertyType);
-                        ReadObject(setting,tmp);
-                        property.SetValue(obj,tmp);
+                        var tmp = Activator.CreateInstance(property.PropertyType);
+                        if (tmp != null)
+                        {
+                            ReadObject(setting, tmp);
+                            property.SetValue(obj,tmp);   
+                        }
                     }
                 }
             }
@@ -186,8 +187,10 @@ namespace engenious.Content.Pipeline
         {
             ReadObject(nodes,this);
         }
-        private static string PrimitiveToString(object obj)
+        private static string? PrimitiveToString(object? obj)
         {
+            if (obj == null)
+                return null;
             var code = Type.GetTypeCode(obj.GetType());
             switch(code)
             {

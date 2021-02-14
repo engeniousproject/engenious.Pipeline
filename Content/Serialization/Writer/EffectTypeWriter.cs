@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using engenious.Content.Pipeline;
 
 namespace engenious.Content.Serialization
@@ -8,12 +9,14 @@ namespace engenious.Content.Serialization
     {
         #region implemented abstract members of ContentTypeWriter
 
-        public override void Write(ContentWriter writer, EffectContent value)
+        public override void Write(ContentWriter writer, EffectContent? value)
         {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value), "Cannot write null EffectContent");
             writer.Write(value.CreateUserEffect);
             if (value.CreateUserEffect)
             {
-                writer.Write(value.UserEffectName);
+                writer.Write(value.UserEffectName ?? throw new Exception("UserEffectName should not be null"));
             }
             writer.Write(value.Techniques.Count);
             foreach (var technique in value.Techniques)
@@ -48,7 +51,7 @@ namespace engenious.Content.Serialization
             }
         }
 
-        public override string RuntimeReaderName => typeof(EffectTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(EffectTypeReader).FullName!;
 
         #endregion
     }

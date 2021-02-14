@@ -1,12 +1,15 @@
-﻿using engenious.Content.Pipeline;
+﻿using System;
+using engenious.Content.Pipeline;
 
 namespace engenious.Content.Serialization
 {
     [ContentTypeWriter]
     public class SpriteFontTypeWriter : ContentTypeWriter<CompiledSpriteFont>
     {
-        public override void Write(ContentWriter writer, CompiledSpriteFont value)
+        public override void Write(ContentWriter writer, CompiledSpriteFont? value)
         {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value), "Cannot write null CompiledSpriteFont");
             writer.WriteObject(value.Texture);
 
             writer.Write(value.Spacing);
@@ -35,7 +38,7 @@ namespace engenious.Content.Serialization
             }
         }
 
-        public override string RuntimeReaderName => typeof(SpriteFontTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(SpriteFontTypeReader).FullName!;
     }
 }
 

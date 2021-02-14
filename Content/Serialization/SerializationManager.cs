@@ -7,9 +7,9 @@ namespace engenious.Content.Serialization
 {
     public class SerializationManager
     {
-        private static SerializationManager _instance;
+        private static SerializationManager? _instance;
 
-        public static SerializationManager Instance => _instance ?? (_instance = new SerializationManager());
+        public static SerializationManager Instance => _instance ??= new SerializationManager();
 
 
         //private Dictionary<string ,IContentTypeReader> typeReaders;
@@ -32,8 +32,7 @@ namespace engenious.Content.Serialization
 				} else*/
                 if (t.GetInterfaces().Contains(typeof(IContentTypeWriter)) && t.GetCustomAttributes(typeof(ContentTypeWriterAttribute), true).FirstOrDefault() != null)
                 {
-                    IContentTypeWriter writer = Activator.CreateInstance(t) as IContentTypeWriter;
-                    if (writer != null)
+                    if (Activator.CreateInstance(t) is IContentTypeWriter writer)
                         _typeWriters.Add(writer.RuntimeType.Namespace + "." + writer.RuntimeType.Name, writer);
                 }
             }
@@ -48,13 +47,9 @@ namespace engenious.Content.Serialization
 			return res;
 		}*/
 
-        public IContentTypeWriter GetWriter(Type writerType)
+        public IContentTypeWriter? GetWriter(Type writerType)
         {
-            IContentTypeWriter res;
-            if (!_typeWriters.TryGetValue(writerType.FullName, out res))
-                return null;
-            return res;
-		
+            return writerType.FullName != null && _typeWriters.TryGetValue(writerType.FullName, out var res) ? res : null;
         }
     }
 }

@@ -32,7 +32,7 @@ namespace engenious.Pipeline
                 // ignored
             }
 
-            string path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string? path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string ext =string.Empty;
             var platform = PlatformHelper.RunningPlatform();
             switch (platform)
@@ -42,7 +42,7 @@ namespace engenious.Pipeline
                     break;
             }
             // ReSharper disable once AssignNullToNotNullAttribute
-            completePath = Path.Combine(path, "ffmpeg" + ext);
+            completePath = path == null ? "ffmpeg" + ext : Path.Combine(path, "ffmpeg" + ext);
             if (File.Exists(completePath))
                 return completePath;
             switch (platform)
@@ -58,9 +58,9 @@ namespace engenious.Pipeline
                         return completePath;
                     break;
                 case Platform.Windows:
-                    completePath = Environment.GetEnvironmentVariable("FFMPEG");
-                    if (File.Exists(completePath))
-                        return completePath;
+                    var envPath = Environment.GetEnvironmentVariable("FFMPEG");
+                    if (envPath != null && File.Exists(envPath))
+                        return envPath;
                     break;
             }
             return "ffmpeg" + ext;
@@ -72,7 +72,7 @@ namespace engenious.Pipeline
         }
         public Process RunCommand(string arguments, bool throwAll = false)
         {
-            Process p = new Process();
+            Process p = new();
             p.StartInfo = new ProcessStartInfo(_ffmpegExe, arguments);
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.CreateNoWindow = true;
@@ -113,7 +113,7 @@ namespace engenious.Pipeline
                 throw new FileNotFoundException($"Could not find ffmpeg at location: '{_ffmpegExe}'.");
 
             }
-            return null;
+            return p;
         }
     }
 }

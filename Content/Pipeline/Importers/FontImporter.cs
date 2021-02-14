@@ -7,7 +7,7 @@ namespace engenious.Content.Pipeline
     [ContentImporter(".fnt", DisplayName = "FontImporter", DefaultProcessor = "FontProcessor")]
     public class FontImporter : ContentImporter<FontContent>
     {
-        public override FontContent Import(string filename, ContentImporterContext context)
+        public override FontContent? Import(string filename, ContentImporterContext context)
         {
             try
             {
@@ -26,7 +26,9 @@ namespace engenious.Content.Pipeline
 
                 content = content.Substring(start);
 
-                return new FontContent(filename, Path.Combine(Path.GetDirectoryName(filename), texture), content);
+                var dirName = Path.GetDirectoryName(filename);
+
+                return new FontContent(filename, dirName == null ? texture : Path.Combine(dirName, texture), content);
             }
             catch (Exception ex)
             {

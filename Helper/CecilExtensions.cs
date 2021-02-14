@@ -13,7 +13,7 @@ namespace engenious.Pipeline.Helper
 
         private static AssemblyDefinition ResolveAssemblyForType(Type type)
         {
-            string asmName = type.Assembly.FullName;
+            string asmName = type.Assembly.FullName ?? throw new ArgumentException("Type has no valid assembly full name associated.");
             if (!_assemblyCache.TryGetValue(asmName, out var asm))
             {
                 asm = AssemblyDefinition.ReadAssembly(type.Assembly.Location);
@@ -23,7 +23,7 @@ namespace engenious.Pipeline.Helper
             return asm;
         }
 
-        public static TypeReference ToCecilTypeRef(this Type type, IMetadataScope scope = null)
+        public static TypeReference ToCecilTypeRef(this Type type, IMetadataScope? scope = null)
         {
             var asm = ResolveAssemblyForType(type);
 

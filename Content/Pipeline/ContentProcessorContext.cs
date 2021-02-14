@@ -37,7 +37,7 @@ namespace engenious.Content.Pipeline
         
         public override void Dispose()
         {
-            GraphicsDevice._context.MakeNoneCurrent();
+            GraphicsDevice.Context.MakeNoneCurrent();
             //Window.Dispose();
         }
     }

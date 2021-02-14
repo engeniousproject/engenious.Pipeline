@@ -11,13 +11,13 @@ namespace engenious.Pipeline
     public class ModelImporter : ContentImporter<Scene>
     {
 
-        private static readonly Exception DllLoadExc;
+        private static readonly Exception? DllLoadExc;
 
         static ModelImporter()
         {
             try
             {
-                string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 if (dir == null)
                     throw new Exception("executing path not found");
                 string ext = ".dll";
@@ -48,7 +48,7 @@ namespace engenious.Pipeline
             }
         }
 
-        public override Scene Import(string filename, ContentImporterContext context)
+        public override Scene? Import(string filename, ContentImporterContext context)
         {
             if (DllLoadExc != null)
                 context.RaiseBuildMessage("FBXIMPORT" , DllLoadExc.Message, BuildMessageEventArgs.BuildMessageType.Error);

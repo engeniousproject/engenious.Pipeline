@@ -6,10 +6,6 @@ namespace engenious.Pipeline
     [Serializable]
     public class SourceFile
     {
-        public SourceFile()
-        {
-        }
-
         public SourceFile(string name, Action<AssemblyDefinition> sourceWriter)
         {
             Name = name;

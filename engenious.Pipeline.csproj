@@ -6,6 +6,7 @@
 
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Description>engenious content pipeline for content compilation and similar content related things.</Description>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
@@ -14,7 +15,7 @@
         <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" PrivateAssets="all" ExcludeAssets="all" />
         <PackageReference Include="SharpFontStandard" Version="4.0.1" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
-        <PackageReference Include="engenious" Version="0.5.0.32-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
+        <PackageReference Include="engenious" Version="0.5.0.35-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
         <PackageReference Include="LitGit" Version="0.2.0.18-alpha" PrivateAssets="all" />
         <PackageReference Include="AssimpNet" Version="5.0.0-beta1" PrivateAssets="compile" />

@@ -13,10 +13,12 @@ namespace engenious.Content.Pipeline
         {
             Kernings = new Dictionary<int, int>();
             CharacterMap = new Dictionary<char, FontCharacter>();
+
+            Texture = null!;
         }
 
-        internal Dictionary<int, int> Kernings;
-        internal Dictionary<char, FontCharacter> CharacterMap;
+        internal readonly Dictionary<int, int> Kernings;
+        internal readonly Dictionary<char, FontCharacter> CharacterMap;
         internal TextureContent Texture;
 
         public char? DefaultCharacter { get; set; }
@@ -31,11 +33,11 @@ namespace engenious.Content.Pipeline
     [ContentProcessor(DisplayName = "Font Processor")]
     public class FontProcessor : ContentProcessor<FontContent, CompiledSpriteFont>
     {
-        public override CompiledSpriteFont Process(FontContent input,string filename, ContentProcessorContext context)
+        public override CompiledSpriteFont? Process(FontContent input,string filename, ContentProcessorContext context)
         {
             try
             {
-                CompiledSpriteFont font = new CompiledSpriteFont();
+                CompiledSpriteFont font = new();
                 var text = new Bitmap(input.TextureFile);
                 var textData = text.LockBits(new System.Drawing.Rectangle(0,0,text.Width,text.Height),ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 font.Texture = new TextureContent(context.GraphicsDevice,false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);

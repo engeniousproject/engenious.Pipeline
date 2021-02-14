@@ -18,6 +18,7 @@ namespace engenious.Content.Pipeline
 
         public TextureContent(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, byte[] inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
         {
+            MipMaps = new List<TextureContentMipMap>();
             _graphicsDevice = graphicsDevice;
             GCHandle handle = GCHandle.Alloc(inputData, GCHandleType.Pinned);
             CreateTexture(graphicsDevice, generateMipMaps, mipMapCount, handle.AddrOfPinnedObject(), width, height, inputFormat, outputFormat);
@@ -26,6 +27,7 @@ namespace engenious.Content.Pipeline
 
         public TextureContent(GraphicsDevice graphicsDevice,bool generateMipMaps, int mipMapCount, IntPtr inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
         {
+            MipMaps = new List<TextureContentMipMap>();
             _graphicsDevice = graphicsDevice;
             CreateTexture(graphicsDevice, generateMipMaps, mipMapCount, inputData, width, height, inputFormat, outputFormat);
         }
@@ -35,7 +37,6 @@ namespace engenious.Content.Pipeline
             Width = width;
             Height = height;
             Format = outputFormat;
-            MipMaps = new List<TextureContentMipMap>();
             bool hwCompressedInput = inputFormat == TextureContentFormat.DXT1 || inputFormat == TextureContentFormat.DXT3 || inputFormat == TextureContentFormat.DXT5;
             bool hwCompressedOutput = outputFormat == TextureContentFormat.DXT1 || outputFormat == TextureContentFormat.DXT3 || outputFormat == TextureContentFormat.DXT5;
             graphicsDevice.ValidateUiGraphicsThread();
@@ -50,11 +51,11 @@ namespace engenious.Content.Pipeline
             //GL.TexSubImage2D(TextureTarget.Texture2D,0,0,0,width,height,
             if (doGenerate)
             {
-                if (_graphicsDevice.DriverVersion.Major < 3 &&
+                if (_graphicsDevice.DriverVersion != null && _graphicsDevice.DriverVersion.Major < 3 &&
                     ((_graphicsDevice.DriverVersion.Major == 1 && _graphicsDevice.DriverVersion.Minor >= 4) ||
                      _graphicsDevice.DriverVersion.Major > 1))
                     GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.GenerateMipmap, 1);
-                else if (_graphicsDevice.DriverVersion.Major < 3)
+                else if (_graphicsDevice.DriverVersion == null || _graphicsDevice.DriverVersion.Major < 3)
                     throw new NotSupportedException("Can't generate MipMaps on this Hardware");
             }
             GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, inputData);
@@ -63,7 +64,7 @@ namespace engenious.Content.Pipeline
                 //TOODO non power of 2 Textures?
                 GL.TexParameter(TextureTarget.Texture2D,TextureParameterName.TextureMaxLevel,mipMapCount);
                 GL.Hint(HintTarget.GenerateMipmapHint,HintMode.Nicest);
-                if (_graphicsDevice.DriverVersion.Major >= 3)
+                if (_graphicsDevice.DriverVersion != null && _graphicsDevice.DriverVersion.Major >= 3)
                     GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
             }
 
@@ -127,17 +128,17 @@ namespace engenious.Content.Pipeline
         public int Height{get;private set;}
         public TextureContentFormat Format{ get; private set; }
 
-        public bool GenerateMipMaps{ get; private set; }=false;
+        public bool GenerateMipMaps { get; } = false;
 
         public int MipMapCount{ get; private set; }=1;
 
-        public List<TextureContentMipMap> MipMaps{ get; private set; }
+        public List<TextureContentMipMap> MipMaps{ get; }
     }
 
     public class TextureContentMipMap
     {
-        private readonly Bitmap _bitmap;
-        private readonly byte[] _data;
+        private readonly Bitmap? _bitmap;
+        private readonly byte[]? _data;
 
         public TextureContentMipMap(int width, int height, TextureContentFormat format, byte[] data)
             : this(width, height, format)
@@ -172,22 +173,20 @@ namespace engenious.Content.Pipeline
             writer.Write((int)Format);
             if (_bitmap != null)
             {
-                using (MemoryStream str = new MemoryStream())
+                using MemoryStream str = new();
+                switch (Format)
                 {
-                    switch (Format)
-                    {
-                        case TextureContentFormat.Png:
-                            _bitmap.Save(str, ImageFormat.Png);
-                            break;
-                        case TextureContentFormat.Jpg:
-                            _bitmap.Save(str, ImageFormat.Jpeg);
-                            break;
-                    }
-
-                    writer.Write((int)str.Position);
-                    str.Position = 0;
-                    writer.Write(str);
+                    case TextureContentFormat.Png:
+                        _bitmap.Save(str, ImageFormat.Png);
+                        break;
+                    case TextureContentFormat.Jpg:
+                        _bitmap.Save(str, ImageFormat.Jpeg);
+                        break;
                 }
+
+                writer.Write((int)str.Position);
+                str.Position = 0;
+                writer.Write(str);
             }
             else if(_data != null)
             {
@@ -195,7 +194,7 @@ namespace engenious.Content.Pipeline
                 writer.Write(_data);
             }
             else
-                throw new InvalidOperationException("Should never happen");
+                throw new InvalidOperationException("_data and _bitmap where both null, which should never happen");
         }
     }
 }

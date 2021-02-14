@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -10,19 +11,19 @@ namespace engenious.Content.Serialization
     {
         private readonly bool _usePng = true;
 
-        public override void Write(ContentWriter writer, Bitmap bmp)
+        public override void Write(ContentWriter writer, Bitmap? bmp)
         {
+            if (bmp == null)
+                throw new ArgumentNullException(nameof(bmp), "Cannot write null Bitmap");
             if (_usePng)
             {
                 writer.Write((byte)1);
-                using (var str = new MemoryStream())
-                {
-                    bmp.Save(str, ImageFormat.Png);
+                using var str = new MemoryStream();
+                bmp.Save(str, ImageFormat.Png);
 
-                    writer.Write((int)str.Position);
-                    str.Position = 0;
-                    writer.Write(str);
-                }
+                writer.Write((int)str.Position);
+                str.Position = 0;
+                writer.Write(str);
             }
             else
             {
@@ -40,7 +41,7 @@ namespace engenious.Content.Serialization
             }
         }
 
-        public override string RuntimeReaderName => typeof(Texture2DTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(Texture2DTypeReader).FullName!;
     }
 }
 

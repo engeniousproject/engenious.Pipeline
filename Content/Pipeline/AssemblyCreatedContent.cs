@@ -171,6 +171,8 @@ namespace engenious.Content.Pipeline
                     switch (args.Action)
                     {
                         case NotifyCollectionChangedAction.Add:
+                            if (args.NewItems == null)
+                                throw new ArgumentException("NewItems should not be null", nameof(args));
                             foreach(var newType in args.NewItems.OfType<TypeDefinition>())
                             {
                                 if (Types.TryGetValue(newType.FullName, out var existingType))
@@ -183,6 +185,8 @@ namespace engenious.Content.Pipeline
                             }
                             break;
                         case NotifyCollectionChangedAction.Remove:
+                            if (args.OldItems == null)
+                                throw new ArgumentException("OldItems should not be null", nameof(args));
                             foreach(var removedTypes in args.OldItems.OfType<TypeDefinition>())
                             {
                                 RemoveBuildCacheAttribute(buildFile, removedTypes);
