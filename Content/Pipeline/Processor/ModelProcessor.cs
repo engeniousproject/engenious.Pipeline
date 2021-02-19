@@ -225,12 +225,25 @@ namespace engenious.Pipeline
                             var loc = channel.PositionKeyCount == 0 ? new Vector3D() : i >= channel.PositionKeyCount ? channel.PositionKeys.Last().Value : channel.PositionKeys[i].Value;
                             var sca = channel.ScalingKeyCount == 0 ? new Vector3D(1, 1, 1) : i >= channel.ScalingKeyCount ? channel.ScalingKeys.Last().Value : channel.ScalingKeys[i].Value;
                             rot.Normalize();
-
+                            
+                            var relativeTransform = Matrix.Invert(node.Node.Transformation);
+                            
                             var transform = new AnimationTransform(node.Node.Name,
                                 new Vector3((loc.X + settings.Translate.X), (loc.Y + settings.Translate.Y),
                                     (loc.Z + settings.Translate.Z)),
                                 new Vector3(sca.X * settings.Scale.X, sca.Y * settings.Scale.Y,
                                     sca.Z * settings.Scale.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
+
+                            var tmp = transform.ToMatrix() * relativeTransform;
+
+                            var (relLoc, relScal, relRot) = tmp;
+
+                            transform = new AnimationTransform(node.Node.Name,
+                                relLoc, relScal, relRot);
+
+                            // if (tmp != transform.ToMatrix())
+                            //     throw new Exception();
+                            
                             AnimationFrame frame = new AnimationFrame(frameTime, transform);
                             node.Frames.Add(frame);
                         }
