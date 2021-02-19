@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.IO.Enumeration;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32;
@@ -15,6 +17,8 @@ namespace engenious.Pipeline
         private static bool FindFondFile(ref string fileName)
         {
             if (Path.GetExtension(fileName) != ".ttf") return false;
+            if (File.Exists(fileName))
+                return true;
             string file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fileName);
             if (File.Exists(file))
             {
@@ -26,14 +30,29 @@ namespace engenious.Pipeline
 		public FontConfigWindows()
 		{
 #pragma warning disable CA1416
-		    var fontKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
-		    if (fontKey == null)
-		        return;
-		    foreach (string fontName in fontKey.GetValueNames())
+		    var machineFontKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
+		    var currentUserFontKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
+
+            static IEnumerable<(string, string)> GetValues(RegistryKey? registryKey)
+            {
+                return registryKey?
+                    .GetValueNames()?
+                    .Select(fontName => (fontName, file: registryKey.GetValue(fontName, null)?.ToString() ?? ""))
+                    .Where(keyPair => !string.IsNullOrWhiteSpace(keyPair.file)) ?? Enumerable.Empty<(string, string)>();
+            }
+
+            if (machineFontKey is null && currentUserFontKey is null)
+                return;
+
+            var machineValues = GetValues(machineFontKey);
+            var currentUserValues = GetValues(currentUserFontKey);
+
+
+            var combined = machineValues.Concat(currentUserValues);
+
+            foreach (var (fontName, fileName) in combined)
 		    {
-		        var value = fontKey.GetValue(fontName, null);
-                var file = value?.ToString();
-		        if (file == null) continue;
+                string file = fileName;
 		        if (FindFondFile(ref file))
 		        {
 		            string name = fontName;
@@ -51,6 +70,8 @@ namespace engenious.Pipeline
         public override bool GetFontFile(string fontName, int fontSize, FontStyle style, out string? fileName)
         {
             fileName = null;
+
+            var fonts = FontFamily.Families;
 
             Font fnt = new Font(fontName, fontSize, style, GraphicsUnit.Point);
 
