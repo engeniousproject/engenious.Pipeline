@@ -82,6 +82,10 @@ namespace engenious.Content.Serialization
                 }
             }
         }
+
+        public ModelContentTypeWriter() : base(0)
+        {
+        }
     }
 }
 

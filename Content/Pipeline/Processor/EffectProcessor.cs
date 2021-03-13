@@ -335,14 +335,12 @@ namespace engenious.Content.Pipeline
             var baseCacheParameters = baseType.Methods.First(x => x.Parameters.Count == 0 && x.Name == "CacheParameters");
             cacheParametersWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseCacheParameters));
             
-            
             var paramsProperty = baseType.Properties.First(x => x.Name == "Parameters");
 
             cacheParametersWriter.Emit(OpCodes.Ldarg_0);
             cacheParametersWriter.Emit(OpCodes.Call, mainModule.ImportReference(paramsProperty.GetMethod));
             cacheParametersWriter.Emit(OpCodes.Stloc_0);
             var paramsGetItem = paramsProperty.PropertyType.Resolve().Methods.First(x => x.Parameters.Count == 1 && x.Name == "get_Item" && x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
-            
             foreach (var p in pass.Parameters)
             {
                 var paramType = mainModule.ImportReference(p.Type.ToCecilTypeRef().Resolve());
@@ -403,7 +401,7 @@ namespace engenious.Content.Pipeline
                     var resolvedParamType = paramType.Resolve();
                     var setValue = effectPassParameterType.Methods.First(x =>
                     {
-                        return x.Name == "SetValue" && 
+                        return  x.Name == "SetValue" &&
                             (x.Parameters[0].ParameterType.FullName == resolvedParamType.FullName ||
                              x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
                     });

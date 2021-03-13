@@ -28,6 +28,10 @@ namespace engenious.Content.Serialization
         public override string RuntimeReaderName => typeof(RasterizerStateTypeReader).FullName!;
 
         #endregion
+
+        public RasterizerStateTypeWriter() : base(0)
+        {
+        }
     }
 
     [ContentTypeWriter]
@@ -66,6 +70,10 @@ namespace engenious.Content.Serialization
         public override string RuntimeReaderName => typeof(DepthStencilStateTypeReader).FullName!;
 
         #endregion
+
+        public DepthStencilStateTypeWriter() : base(0)
+        {
+        }
     }
 
     [ContentTypeWriter]
@@ -98,6 +106,10 @@ namespace engenious.Content.Serialization
         public override string RuntimeReaderName => typeof(BlendStateTypeReader).FullName!;
 
         #endregion
+
+        public BlendStateTypeWriter() : base(0)
+        {
+        }
     }
 }
 

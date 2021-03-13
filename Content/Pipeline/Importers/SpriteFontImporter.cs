@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using engenious.Content.Pipeline;
+using engenious.Graphics;
 
 namespace engenious.Pipeline
 {
@@ -15,7 +16,7 @@ namespace engenious.Pipeline
 
         public override SpriteFontContent Import(string filename, ContentImporterContext context)
         {
-            return new SpriteFontContent(filename);
+            return new(filename);
         }
 
         #endregion
@@ -23,6 +24,7 @@ namespace engenious.Pipeline
 
     public class SpriteFontContent
     {
+        public SpriteFontType FontType { get; }
         public SpriteFontContent(string fileName)
         {
             CharacterRegions = new List<CharacterRegion>();
@@ -45,6 +47,11 @@ namespace engenious.Pipeline
                 {
                     case "FontName":
                         FontName = element.InnerText;
+                        break;
+                    case "FontType":
+                        if (!Enum.TryParse(typeof(SpriteFontType), element.InnerText, out var fontType))
+                            throw new FormatException($"Invalid FontType: '{element.InnerText}'");
+                        FontType = (SpriteFontType?) fontType ?? SpriteFontType.Default;
                         break;
                     case "Size":
                         Size = int.Parse(element.InnerText);
@@ -79,6 +86,7 @@ namespace engenious.Pipeline
             xml.WriteStartElement("EngeniousFont");
 
             xml.WriteElementString("FontName", FontName);
+            xml.WriteElementString("FontType", FontType.ToString());
             xml.WriteElementString("Size", Size.ToString());
             xml.WriteElementString("Spacing", Spacing.ToString());
             xml.WriteElementString("UseKerning", UseKerning.ToString());

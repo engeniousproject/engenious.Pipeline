@@ -23,6 +23,10 @@ namespace engenious.Content.Serialization
         public override string RuntimeReaderName => typeof(Texture2DTypeReader).FullName!;
 
         #endregion
+
+        public TextureContentTypeWriter() : base(0)
+        {
+        }
     }
 }
 

@@ -11,23 +11,24 @@ namespace engenious.Content.Pipeline
     {
         public CompiledSpriteFont()
         {
-            Kernings = new Dictionary<int, int>();
+            Kernings = new Dictionary<int, float>();
             CharacterMap = new Dictionary<char, FontCharacter>();
 
             Texture = null!;
         }
 
-        internal readonly Dictionary<int, int> Kernings;
+        internal readonly Dictionary<int, float> Kernings;
         internal readonly Dictionary<char, FontCharacter> CharacterMap;
         internal TextureContent Texture;
+        internal SpriteFontType FontType;
 
         public char? DefaultCharacter { get; set; }
 
-        public int LineSpacing { get; set; }
+        public float LineSpacing { get; set; }
 
         public float Spacing { get; set; }
 
-        public int BaseLine { get; set; }
+        public float BaseLine { get; set; }
     }
 
     [ContentProcessor(DisplayName = "Font Processor")]
@@ -38,6 +39,7 @@ namespace engenious.Content.Pipeline
             try
             {
                 CompiledSpriteFont font = new();
+                font.FontType = SpriteFontType.BitmapFont;
                 var text = new Bitmap(input.TextureFile);
                 var textData = text.LockBits(new System.Drawing.Rectangle(0,0,text.Width,text.Height),ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 font.Texture = new TextureContent(context.GraphicsDevice,false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
@@ -136,7 +138,7 @@ namespace engenious.Content.Pipeline
                     if (idCharMap.ContainsKey(id))
                         continue;
                     idCharMap.Add(id, letter);
-                    FontCharacter fontChar = new FontCharacter(letter, new Rectangle(0, 0, font.Texture.Width, font.Texture.Height), new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), advance);
+                    FontCharacter fontChar = new FontCharacter(letter, new Rectangle(0, 0, font.Texture.Width, font.Texture.Height), new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), advance);
 
                     if (font.CharacterMap.ContainsKey(letter))
                         continue;
