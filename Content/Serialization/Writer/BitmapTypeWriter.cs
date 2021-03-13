@@ -42,6 +42,11 @@ namespace engenious.Content.Serialization
         }
 
         public override string RuntimeReaderName => typeof(Texture2DTypeReader).FullName!;
+
+        public BitmapTypeWriter()
+            : base(0)
+        {
+        }
     }
 }
 

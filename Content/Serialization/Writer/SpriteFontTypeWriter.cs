@@ -15,6 +15,7 @@ namespace engenious.Content.Serialization
             writer.Write(value.Spacing);
             writer.Write(value.LineSpacing);
             writer.Write(value.BaseLine);
+            writer.Write((byte)value.FontType);
             writer.Write(value.DefaultCharacter.HasValue);
             if (value.DefaultCharacter.HasValue)
                 writer.Write(value.DefaultCharacter.Value);
@@ -30,6 +31,7 @@ namespace engenious.Content.Serialization
             {
                 writer.Write(character.Key);
                 writer.Write(character.Value.Offset);
+                writer.Write(character.Value.Size);
                 writer.Write(character.Value.TextureRegion.X);
                 writer.Write(character.Value.TextureRegion.Y);
                 writer.Write(character.Value.TextureRegion.Width);
@@ -39,6 +41,10 @@ namespace engenious.Content.Serialization
         }
 
         public override string RuntimeReaderName => typeof(SpriteFontTypeReader).FullName!;
+
+        public SpriteFontTypeWriter() : base(1)
+        {
+        }
     }
 }
 

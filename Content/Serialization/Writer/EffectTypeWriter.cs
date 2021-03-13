@@ -54,6 +54,10 @@ namespace engenious.Content.Serialization
         public override string RuntimeReaderName => typeof(EffectTypeReader).FullName!;
 
         #endregion
+
+        public EffectTypeWriter() : base(0)
+        {
+        }
     }
 }
 

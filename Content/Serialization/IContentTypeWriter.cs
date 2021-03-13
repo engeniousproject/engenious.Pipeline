@@ -9,6 +9,8 @@ namespace engenious.Content.Serialization
 		string RuntimeReaderName{ get; }
 
 		Type RuntimeType{ get; }
+		
+		public uint ContentVersion { get; }
 	}
 }
 

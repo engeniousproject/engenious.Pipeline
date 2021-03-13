@@ -37,13 +37,16 @@ namespace engenious.Pipeline.Helper
         /// <param name="childTypeDef"></param>
         /// <param name="parentTypeDef"></param>
         /// <returns></returns>
-        public static bool IsSubclassOf(this TypeDefinition childTypeDef, TypeDefinition parentTypeDef) =>
-            childTypeDef.MetadataToken
-            != parentTypeDef.MetadataToken
-            && childTypeDef
-                .EnumerateBaseClasses()
-                .Any(b =>
-                    b.MetadataToken == parentTypeDef.MetadataToken);
+        public static bool IsSubclassOf(this TypeDefinition childTypeDef, TypeDefinition parentTypeDef)
+        {
+            return childTypeDef.MetadataToken
+                   != parentTypeDef.MetadataToken
+                   && childTypeDef
+                       .EnumerateBaseClasses()
+                       .Any(b =>
+                           b.MetadataToken == parentTypeDef.MetadataToken ||
+                           b.FullName == parentTypeDef.FullName);
+        }
 
         /// <summary>
         /// Does childType inherit from parentInterface
