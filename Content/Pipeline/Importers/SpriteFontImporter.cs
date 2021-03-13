@@ -24,7 +24,6 @@ namespace engenious.Pipeline
 
     public class SpriteFontContent
     {
-        public SpriteFontType FontType { get; }
         public SpriteFontContent(string fileName)
         {
             CharacterRegions = new List<CharacterRegion>();
@@ -185,6 +184,8 @@ namespace engenious.Pipeline
 
 
         public string? FontName { get; set; }
+        
+        public SpriteFontType FontType { get; set; }
 
         public int Size { get; set; }
 
