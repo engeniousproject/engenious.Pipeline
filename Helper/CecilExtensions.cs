@@ -13,7 +13,7 @@ namespace engenious.Pipeline.Helper
 
         private static AssemblyDefinition ResolveAssemblyForType(Type type)
         {
-            string asmName = type.Assembly.FullName;
+            string asmName = type.Assembly.FullName ?? throw new ArgumentException("Type has no valid assembly full name associated.");
             if (!_assemblyCache.TryGetValue(asmName, out var asm))
             {
                 asm = AssemblyDefinition.ReadAssembly(type.Assembly.Location);
@@ -23,7 +23,7 @@ namespace engenious.Pipeline.Helper
             return asm;
         }
 
-        public static TypeReference ToCecilTypeRef(this Type type, IMetadataScope scope = null)
+        public static TypeReference ToCecilTypeRef(this Type type, IMetadataScope? scope = null)
         {
             var asm = ResolveAssemblyForType(type);
 
@@ -37,13 +37,16 @@ namespace engenious.Pipeline.Helper
         /// <param name="childTypeDef"></param>
         /// <param name="parentTypeDef"></param>
         /// <returns></returns>
-        public static bool IsSubclassOf(this TypeDefinition childTypeDef, TypeDefinition parentTypeDef) =>
-            childTypeDef.MetadataToken
-            != parentTypeDef.MetadataToken
-            && childTypeDef
-                .EnumerateBaseClasses()
-                .Any(b =>
-                    b.MetadataToken == parentTypeDef.MetadataToken);
+        public static bool IsSubclassOf(this TypeDefinition childTypeDef, TypeDefinition parentTypeDef)
+        {
+            return childTypeDef.MetadataToken
+                   != parentTypeDef.MetadataToken
+                   && childTypeDef
+                       .EnumerateBaseClasses()
+                       .Any(b =>
+                           b.MetadataToken == parentTypeDef.MetadataToken ||
+                           b.FullName == parentTypeDef.FullName);
+        }
 
         /// <summary>
         /// Does childType inherit from parentInterface

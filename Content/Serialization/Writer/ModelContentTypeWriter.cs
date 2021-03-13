@@ -1,11 +1,12 @@
-﻿using engenious.Graphics;
+﻿using System;
+using engenious.Graphics;
 
 namespace engenious.Content.Serialization
 {
     [ContentTypeWriter]
     public class ModelContentTypeWriter : ContentTypeWriter<ModelContent>
     {
-        public override string RuntimeReaderName => typeof(ModelTypeReader).FullName;
+        public override string RuntimeReaderName => typeof(ModelTypeReader).FullName!;
 
         private static void WriteTree(ContentWriter writer, ModelContent value, NodeContent node)
         {
@@ -16,8 +17,10 @@ namespace engenious.Content.Serialization
                 WriteTree(writer, value, c);
         }
 
-        public override void Write(ContentWriter writer, ModelContent value)
+        public override void Write(ContentWriter writer, ModelContent? value)
         {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value), "Cannot write null ModelContent");
             writer.Write(value.Meshes.Length);
             foreach (var m in value.Meshes)
             {
@@ -31,21 +34,21 @@ namespace engenious.Content.Serialization
                 {
                     if (m.Vertices.HasPositions)
                     {
-                        writer.Write(m.Vertices.AsPosition[i]);
+                        writer.Write(m.Vertices.AsPosition![i]);
                     }
                     if (m.Vertices.HasColors)
                     {
-                        writer.Write(m.Vertices.AsColor[i]);
+                        writer.Write(m.Vertices.AsColor![i]);
                     }
 
                     if (m.Vertices.HasNormals)
                     {
-                        writer.Write(m.Vertices.AsNormal[i]);
+                        writer.Write(m.Vertices.AsNormal![i]);
                     }
 
                     if (m.Vertices.HasTextureCoordinates)
                     {
-                        writer.Write(m.Vertices.AsTextureCoordinate[i]);
+                        writer.Write(m.Vertices.AsTextureCoordinate![i]);
                     }
                 }
             }
@@ -58,7 +61,7 @@ namespace engenious.Content.Serialization
                 foreach (var m in n.Meshes)
                     writer.Write(m);
             }
-            WriteTree(writer, value, value.RootNode);
+            WriteTree(writer, value, value.RootNode ?? throw new ArgumentException("Cannot write a model without a valid RootNode", nameof(value)));
 
             writer.Write(value.Animations.Count);
             foreach(var anim in value.Animations){
@@ -78,6 +81,10 @@ namespace engenious.Content.Serialization
                     }
                 }
             }
+        }
+
+        public ModelContentTypeWriter() : base(0)
+        {
         }
     }
 }

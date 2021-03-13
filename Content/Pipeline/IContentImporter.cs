@@ -6,7 +6,7 @@ namespace engenious.Content.Pipeline
 	{
         Type ExportType { get; }
 
-        object Import (string filename, ContentImporterContext context);
+        object? Import (string filename, ContentImporterContext context);
 	}
 }
 

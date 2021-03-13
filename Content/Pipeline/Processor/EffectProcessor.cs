@@ -208,6 +208,10 @@ namespace engenious.Content.Pipeline
             foreach (var pass in technique.Passes)
             {
                 var passType = GenerateEffectPassSource(typeDefinition, pass, engeniousAssembly);
+                if (passType == null)
+                {
+                    throw new Exception($"Unable to create IL code for {pass.Name} EffectPass");
+                }
                 var (p, _) = typeDefinition.AddAutoProperty(passType, pass.Name, MethodAttributes.Public,
                     MethodAttributes.Private);
                 
@@ -223,13 +227,12 @@ namespace engenious.Content.Pipeline
             
             initializeWriter.Emit(OpCodes.Ret);
 
-            var parameters = new Dictionary<string, List<ParameterReference>>();
+            var parameters = new Dictionary<string, List<ParameterReference>?>();
             foreach (var pass in technique.Passes)
             {
                 foreach (var param in pass.Parameters)
                 {
-                    List<ParameterReference> paramList;
-                    if (!parameters.TryGetValue(param.Name, out paramList))
+                    if (!parameters.TryGetValue(param.Name, out var paramList))
                     {
                         paramList = new List<ParameterReference>();
                     }
@@ -290,7 +293,7 @@ namespace engenious.Content.Pipeline
             return typeDefinition;
         }
         
-        private TypeDefinition GenerateEffectPassSource(TypeDefinition parent, EffectPass pass, AssemblyDefinition engeniousAssembly)
+        private TypeDefinition? GenerateEffectPassSource(TypeDefinition parent, EffectPass pass, AssemblyDefinition engeniousAssembly)
         {
             var mainModule = parent.Module;
             
@@ -331,7 +334,6 @@ namespace engenious.Content.Pipeline
             cacheParametersWriter.Emit(OpCodes.Ldarg_0);
             var baseCacheParameters = baseType.Methods.First(x => x.Parameters.Count == 0 && x.Name == "CacheParameters");
             cacheParametersWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseCacheParameters));
-            
             
             var paramsProperty = baseType.Properties.First(x => x.Name == "Parameters");
 
@@ -375,6 +377,8 @@ namespace engenious.Content.Pipeline
                     getWriter.Emit(OpCodes.Ret);
 
                     var setWriter = paramProp.SetMethod.Body.GetILProcessor();
+
+                    var retOp = setWriter.Create(OpCodes.Ret);
                     setWriter.Emit(OpCodes.Ldarg_0);
                     setWriter.Emit(OpCodes.Ldfld, paramField);
                     
@@ -397,19 +401,61 @@ namespace engenious.Content.Pipeline
                     var resolvedParamType = paramType.Resolve();
                     var setValue = effectPassParameterType.Methods.First(x =>
                     {
-                        return x.Name == "SetValue" && 
+                        return  x.Name == "SetValue" &&
                             (x.Parameters[0].ParameterType.FullName == resolvedParamType.FullName ||
                              x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
                     });
                     setWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(setValue));
                     
-                    setWriter.Emit(OpCodes.Ret);
+                    setWriter.Append(retOp);
 
 
-                    var opEquality = resolvedParamType.Methods.FirstOrDefault(x => x.Name == "op_Equality");
+                    static MethodDefinition? FindMatchingMethod(TypeDefinition resolvedParamType, Func<MethodDefinition, bool> methodConstrainer)
+                    {
+                        var res = resolvedParamType.Methods.FirstOrDefault(methodConstrainer);
+                        if (res != null)
+                            return res;
+                        var curParamType = resolvedParamType;
+                        while (res == null)
+                        {
+                            curParamType = curParamType.BaseType?.Resolve();
+                            if (curParamType == null)
+                                return null;
+                            res = curParamType.Methods.FirstOrDefault(methodConstrainer);
+                        }
+
+                        return res;
+                    }
+
+                    MethodDefinition? opEquality = null;
+                    if (!resolvedParamType.IsPrimitive)
+                        opEquality = FindMatchingMethod(resolvedParamType,
+                                         x => x.Name == "op_Equality" && !x.HasThis && x.Parameters.Count == 2 && x.Parameters[0].ParameterType == x.Parameters[1].ParameterType && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType))
+                                     ??  FindMatchingMethod(resolvedParamType, x => x.Name == "Equals" && x.HasThis && x.Parameters.Count == 1
+                                         && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
 
                     if (opEquality != null)
                     {
+                        if (opEquality.Name == "Equals")
+                        {
+                            var valNullCheck = setWriter.Create(OpCodes.Ldarg_1);
+                            var earlyExit = setWriter.Create(OpCodes.Ret);
+                            var jump = setWriter.Create(OpCodes.Bne_Un, valNullCheck);
+                            setWriter.InsertAfter(insertPos, jump);
+                            setWriter.InsertAfter(jump, earlyExit);
+                            setWriter.InsertAfter(earlyExit, valNullCheck);
+                            insertPos = setWriter.Create(OpCodes.Brfalse_S, branch);
+                            setWriter.InsertAfter(valNullCheck, insertPos);
+
+                            var ldArg1 = setWriter.Create(OpCodes.Ldarg_1);
+                            setWriter.InsertAfter(insertPos, ldArg1);
+                            insertPos = Instruction.Create(OpCodes.Ldarg_0);
+                            setWriter.InsertAfter(ldArg1, insertPos);
+
+                            var ldFld = setWriter.Create(OpCodes.Ldfld, effectPassParamField);
+                            setWriter.InsertAfter(insertPos, ldFld);
+                            insertPos = ldFld;
+                        }
                         var eqCheck = setWriter.Create(OpCodes.Call, mainModule.ImportReference(opEquality));
                         setWriter.InsertAfter(insertPos, eqCheck);
                     
@@ -427,7 +473,7 @@ namespace engenious.Content.Pipeline
             return typeDefinition;
         }
 
-        private Type getType(EffectParameterType type)
+        private static Type GetType(EffectParameterType type)
         {
             Type t;
             switch (type)
@@ -454,9 +500,11 @@ namespace engenious.Content.Pipeline
                     t = typeof(Vector4);
                     break;
                 case EffectParameterType.Sampler2D:
+                case EffectParameterType.Sampler2DShadow:
                     t = typeof(Texture2D);
                     break;
                 case EffectParameterType.Sampler2DArray:
+                case EffectParameterType.Sampler2DArrayShadow:
                     t = typeof(Texture2DArray);
                     break;
                 case EffectParameterType.Int:
@@ -476,7 +524,7 @@ namespace engenious.Content.Pipeline
             return t;
         }
 
-        public override EffectContent Process(EffectContent input, string filename, ContentProcessorContext context)
+        public override EffectContent? Process(EffectContent input, string filename, ContentProcessorContext context)
         {
             try
             {
@@ -517,7 +565,7 @@ namespace engenious.Content.Pipeline
 
                         foreach (var p in compiledPass.Parameters)
                         {
-                            pass.Parameters.Add(new ParameterInfo(p.Name, getType(p.Type)));
+                            pass.Parameters.Add(new ParameterInfo(p.Name, GetType(p.Type)));
                         }
                     }
                 }
@@ -528,9 +576,9 @@ namespace engenious.Content.Pipeline
                 if (input.CreateUserEffect)
                 {
                     string rel = context.GetRelativePathToWorkingDirectory(filename);
-                    string namespce = Path.GetDirectoryName(rel);
-                    namespce = namespce.Replace(Path.DirectorySeparatorChar, '.')
-                        .Replace(Path.AltDirectorySeparatorChar, '.');
+                    var namespce = Path.GetDirectoryName(rel);
+                    namespce = namespce?.Replace(Path.DirectorySeparatorChar, '.')
+                        .Replace(Path.AltDirectorySeparatorChar, '.') ?? string.Empty;
                     var nameWithoutExtension = Path.GetFileNameWithoutExtension(rel);
                     GenerateEffectSource(filename, input, namespce, nameWithoutExtension, context);
                 }

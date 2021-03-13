@@ -20,20 +20,15 @@ namespace engenious.Content.Pipeline
         [System.Xml.Serialization.XmlIgnore()]
         protected TSettings settings;
 
-        public ProcessorSettings Settings{
-            get
-            {
-                return settings;
-            }
-            set
-            {
-                settings = (TSettings)value;
-            }
+        public ProcessorSettings Settings
+        {
+            get => settings;
+            set => settings = (TSettings)value;
         }
 
-        public abstract TOutput Process(TInput input,string filename, ContentProcessorContext context);
+        public abstract TOutput? Process(TInput input,string filename, ContentProcessorContext context);
 
-        object IContentProcessor.Process(object input, string filename, ContentProcessorContext context)
+        object? IContentProcessor.Process(object input, string filename, ContentProcessorContext context)
         {
             return Process((TInput)input,filename, context);
         }
@@ -42,8 +37,6 @@ namespace engenious.Content.Pipeline
     {
         public ContentProcessor()
         {
-            Settings = null;
         }
     }
 }
-

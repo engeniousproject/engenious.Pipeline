@@ -6,7 +6,7 @@ namespace engenious.Content.Pipeline
     public interface IContentProcessor
     {
         ProcessorSettings Settings{get;set;}
-        object Process(object input, string filename, ContentProcessorContext context);
+        object? Process(object input, string filename, ContentProcessorContext context);
 
         Type ImportType { get; }
         Type ExportType { get; }

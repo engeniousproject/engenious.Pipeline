@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.IO.Enumeration;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32;
@@ -15,6 +17,8 @@ namespace engenious.Pipeline
         private static bool FindFondFile(ref string fileName)
         {
             if (Path.GetExtension(fileName) != ".ttf") return false;
+            if (File.Exists(fileName))
+                return true;
             string file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fileName);
             if (File.Exists(file))
             {
@@ -25,14 +29,30 @@ namespace engenious.Pipeline
         }
 		public FontConfigWindows()
 		{
-		    var fontKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
-		    if (fontKey == null)
-		        return;
-		    foreach (string fontName in fontKey.GetValueNames())
+#pragma warning disable CA1416
+		    var machineFontKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
+		    var currentUserFontKey = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
+
+            static IEnumerable<(string, string)> GetValues(RegistryKey? registryKey)
+            {
+                return registryKey?
+                    .GetValueNames()?
+                    .Select(fontName => (fontName, file: registryKey.GetValue(fontName, null)?.ToString() ?? ""))
+                    .Where(keyPair => !string.IsNullOrWhiteSpace(keyPair.file)) ?? Enumerable.Empty<(string, string)>();
+            }
+
+            if (machineFontKey is null && currentUserFontKey is null)
+                return;
+
+            var machineValues = GetValues(machineFontKey);
+            var currentUserValues = GetValues(currentUserFontKey);
+
+
+            var combined = machineValues.Concat(currentUserValues);
+
+            foreach (var (fontName, fileName) in combined)
 		    {
-		        var value = fontKey.GetValue(fontName, null);
-		        if (value == null) continue;
-		        var file = value.ToString();
+                string file = fileName;
 		        if (FindFondFile(ref file))
 		        {
 		            string name = fontName;
@@ -41,20 +61,25 @@ namespace engenious.Pipeline
 		            _fontFileMap.Add(name, file);
 		        }
 		    }
+#pragma warning restore CA1416
 		}
 
         #region implemented abstract members of FontConfig
        
 
-        public override bool GetFontFile(string fontName, int fontSize, FontStyle style,out string fileName)
+        public override bool GetFontFile(string fontName, int fontSize, FontStyle style, out string? fileName)
         {
             fileName = null;
+
+            var fonts = FontFamily.Families;
 
             Font fnt = new Font(fontName, fontSize, style, GraphicsUnit.Point);
 
             var names = GetFontNames(fnt);
             foreach (var name in names)
             {
+                if (name.Name == null)
+                    continue;
                 if (_fontFileMap.TryGetValue(name.Name, out fileName))
                     break;
             }
@@ -110,7 +135,7 @@ namespace engenious.Pipeline
         [DllImport("gdi32.dll", EntryPoint = "SelectObject")]
         private static extern IntPtr SelectObject([In] IntPtr hdc, [In] IntPtr hgdiobj);
         [DllImport("gdi32.dll")]
-        private static extern uint GetFontData(IntPtr hdc, uint dwTable, uint dwOffset, [Out] byte[] lpvBuffer, uint cbData);
+        private static extern uint GetFontData(IntPtr hdc, uint dwTable, uint dwOffset, [Out] byte[]? lpvBuffer, uint cbData);
 
         private const uint NameTableKey = 0x656D616E;
         /// <summary>
@@ -164,11 +189,8 @@ namespace engenious.Pipeline
             private readonly ushort _nameLength;
             private readonly ushort _byteOffset;
 
-            public string Name { get; private set; }
-
-
-
-
+            public string? Name { get; private set; }
+            
             /// <summary>
             /// Gets a value indicating whether this <see cref="NameRecord"/> represents a Windows Unicode full font name.
             /// </summary>

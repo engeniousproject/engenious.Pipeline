@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using engenious.Graphics;
 using System.Threading;
 using engenious.Helper;
@@ -20,45 +21,23 @@ namespace engenious.Content.Pipeline
 
         }
 
-        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyCreatedContent createdContentAssembly, Guid buildId, string contentDirectory, string workingDirectory = "")
-            : this(syncContext, createdContentAssembly, null, null, buildId, contentDirectory, workingDirectory)
-        {
-            
-        }
-        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyCreatedContent createdContentAssembly, IRenderingSurface surface , GraphicsDevice graphicsDevice, Guid buildId, string contentDirectory, string workingDirectory = "")
+        public ContentProcessorContext(SynchronizationContext syncContext, AssemblyCreatedContent createdContentAssembly, IGame game, Guid buildId, string contentDirectory, string workingDirectory = "")
             : base(buildId, createdContentAssembly, contentDirectory, workingDirectory)
         {
             SyncContext = syncContext;
 
-            if (surface == null && graphicsDevice != null || surface != null && graphicsDevice == null)
-                throw new ArgumentException($"Either both of {nameof(surface)} and {nameof(graphicsDevice._context)} must be set or not set.");
 
-            IGraphicsContext context;
-            if (surface == null)
-            {
-                var nativeWindowSettings = new NativeWindowSettings();
-                nativeWindowSettings.StartVisible = false;
-                var window = new GameWindow(GameWindowSettings.Default, nativeWindowSettings);
-                context = window.Context;
-            }
-            else
-            {
-                context = graphicsDevice._context;
-            }
-
-            context.MakeCurrent();
-
-            ThreadingHelper.Initialize(null, null);
-
-            GraphicsDevice = new GraphicsDevice(null, ThreadingHelper.Context);
+            Game = game;
+            GraphicsDevice.SwitchUiThread();
         }
 
         public SynchronizationContext SyncContext { get; }
-        public GraphicsDevice GraphicsDevice { get; }
+        public IGame Game { get; }
+        public GraphicsDevice GraphicsDevice => Game.GraphicsDevice;
         
         public override void Dispose()
         {
-            //GraphicsDevice.Dispose();
+            GraphicsDevice.Context.MakeNoneCurrent();
             //Window.Dispose();
         }
     }

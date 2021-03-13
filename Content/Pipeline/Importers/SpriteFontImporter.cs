@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using engenious.Content.Pipeline;
+using engenious.Graphics;
 
 namespace engenious.Pipeline
 {
@@ -15,7 +16,7 @@ namespace engenious.Pipeline
 
         public override SpriteFontContent Import(string filename, ContentImporterContext context)
         {
-            return new SpriteFontContent(filename);
+            return new(filename);
         }
 
         #endregion
@@ -28,7 +29,7 @@ namespace engenious.Pipeline
             CharacterRegions = new List<CharacterRegion>();
             var doc = new XmlDocument();
             doc.Load(fileName);
-            XmlElement rootNode = null;
+            XmlElement? rootNode = null;
             foreach (var node in doc.ChildNodes.OfType<XmlElement>())
             {
                 if (node.Name == "EngeniousFont")
@@ -45,6 +46,11 @@ namespace engenious.Pipeline
                 {
                     case "FontName":
                         FontName = element.InnerText;
+                        break;
+                    case "FontType":
+                        if (!Enum.TryParse(typeof(SpriteFontType), element.InnerText, out var fontType))
+                            throw new FormatException($"Invalid FontType: '{element.InnerText}'");
+                        FontType = (SpriteFontType?) fontType ?? SpriteFontType.Default;
                         break;
                     case "Size":
                         Size = int.Parse(element.InnerText);
@@ -72,34 +78,32 @@ namespace engenious.Pipeline
 
         public void Save(string fileName)
         {
-            var doc = new XmlDocument();
-            using (var xml = new XmlTextWriter(fileName, Encoding.UTF8))
-            {
-                xml.Formatting = Formatting.Indented;
-                xml.WriteStartDocument();
+            using var xml = new XmlTextWriter(fileName, Encoding.UTF8);
+            xml.Formatting = Formatting.Indented;
+            xml.WriteStartDocument();
 
-                xml.WriteStartElement("EngeniousFont");
+            xml.WriteStartElement("EngeniousFont");
 
-                xml.WriteElementString("FontName", FontName);
-                xml.WriteElementString("Size", Size.ToString());
-                xml.WriteElementString("Spacing", Spacing.ToString());
-                xml.WriteElementString("UseKerning", UseKerning.ToString());
-                xml.WriteElementString("Style", styleToString(Style));
-                xml.WriteElementString("DefaultCharacter", DefaultCharacter.ToString());
-
-
-                xml.WriteStartElement("CharacterRegions");
-
-                foreach (var cr in CharacterRegions)
-                    cr.WriteToXml(xml);
-
-                xml.WriteEndElement();
+            xml.WriteElementString("FontName", FontName);
+            xml.WriteElementString("FontType", FontType.ToString());
+            xml.WriteElementString("Size", Size.ToString());
+            xml.WriteElementString("Spacing", Spacing.ToString());
+            xml.WriteElementString("UseKerning", UseKerning.ToString());
+            xml.WriteElementString("Style", styleToString(Style));
+            xml.WriteElementString("DefaultCharacter", DefaultCharacter.ToString());
 
 
-                xml.WriteEndElement();
+            xml.WriteStartElement("CharacterRegions");
 
-                xml.WriteEndDocument();
-            }
+            foreach (var cr in CharacterRegions)
+                cr.WriteToXml(xml);
+
+            xml.WriteEndElement();
+
+
+            xml.WriteEndElement();
+
+            xml.WriteEndDocument();
         }
 
         private void ParseCharacterRegion(XmlElement rootNode)
@@ -108,7 +112,7 @@ namespace engenious.Pipeline
             {
                 if (region.Name == "CharacterRegion")
                 {
-                    string start = null, end = null;
+                    string? start = null, end = null;
                     foreach (XmlElement element in region.ChildNodes.OfType<XmlElement>())
                     {
                         switch (element.Name)
@@ -179,7 +183,9 @@ namespace engenious.Pipeline
         }
 
 
-        public string FontName { get; set; }
+        public string? FontName { get; set; }
+        
+        public SpriteFontType FontType { get; set; }
 
         public int Size { get; set; }
 
@@ -246,14 +252,14 @@ namespace engenious.Pipeline
 
         public int End { get; }
 
-        public bool Equals(CharacterRegion other)
+        public bool Equals(CharacterRegion? other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             return _defaultChar == other._defaultChar && Start == other.Start && End == other.End;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;

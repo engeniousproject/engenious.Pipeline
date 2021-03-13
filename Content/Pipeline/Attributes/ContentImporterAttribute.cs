@@ -18,9 +18,9 @@ namespace engenious.Content.Pipeline
 
         public IEnumerable<string> FileExtensions => _fileExtensions;
 
-        public string DisplayName{ get; set; }
+        public string? DisplayName{ get; set; }
 
-        public string DefaultProcessor { get; set; }
+        public string? DefaultProcessor { get; set; }
 
         public bool CacheImportedData { get; set; }
     }

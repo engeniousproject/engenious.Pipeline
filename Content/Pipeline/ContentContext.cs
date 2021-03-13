@@ -6,7 +6,7 @@ namespace engenious.Content.Pipeline
 {
 	public abstract class ContentContext : IContentContext
 	{
-        public event BuildMessageDel BuildMessage;
+        public event BuildMessageDel? BuildMessage;
 
 	    protected ContentContext (Guid buildId, AssemblyCreatedContent createdContent, string contentDirectory, string workingDirectory = "")
 	    {
@@ -16,7 +16,7 @@ namespace engenious.Content.Pipeline
 			Dependencies = new List<string> ();
 			if (workingDirectory.Length > 0)
 			{
-				char lastChar = workingDirectory[workingDirectory.Length - 1];
+				char lastChar = workingDirectory[^1];
 				workingDirectory = (lastChar == Path.DirectorySeparatorChar || lastChar == Path.AltDirectorySeparatorChar)
 					? workingDirectory
 					: workingDirectory + Path.DirectorySeparatorChar;
@@ -58,7 +58,7 @@ namespace engenious.Content.Pipeline
 				var relUri = parentUri.MakeRelativeUri(subUri);
 				return relUri.ToString();
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 				return subPath;
 			}
@@ -73,7 +73,7 @@ namespace engenious.Content.Pipeline
 				var relUri = parentUri.MakeRelativeUri(subUri);
 				return relUri.ToString();
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 				return subPath;
 			}

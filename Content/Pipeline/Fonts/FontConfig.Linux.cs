@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace engenious.Pipeline
 {
-    public class FontConfigLinux:FontConfigUnix
+    public class FontConfigLinux : FontConfigUnix
     {
         [DllImport("libfontconfig.so.1",EntryPoint="FcInitLoadConfigAndFonts")]
         private static extern IntPtr FcInitLoadConfigAndFonts_Base();
@@ -21,17 +21,12 @@ namespace engenious.Pipeline
         private static extern void FcPatternDestroy_Base(IntPtr pattern);
         [DllImport("libfontconfig.so.1",EntryPoint="FcPatternGetString")]
         private static extern FcResult FcPatternGetString_Base(IntPtr pattern, string name, int n, out IntPtr resultString);
+
         public FontConfigLinux()
+            : base(FcInitLoadConfigAndFonts_Base, FcPatternCreate_Base, FcNameParse_Base, FcConfigSubstitute_Base,
+                FcDefaultSubstitute_Base, FcFontMatch_Base, FcPatternDestroy_Base, FcPatternGetString_Base)
         {
-            FcInitLoadConfigAndFonts = FcInitLoadConfigAndFonts_Base;
-            FcPatternCreate=FcPatternCreate_Base;
-            FcNameParse=FcNameParse_Base;
-            FcConfigSubstitute=FcConfigSubstitute_Base;
-            FcDefaultSubstitute=FcDefaultSubstitute_Base;
-            FcFontMatch=FcFontMatch_Base;
-            FcPatternDestroy=FcPatternDestroy_Base;
-            FcPatternGetString=FcPatternGetString_Base;
-            
+
         }
     }
 }

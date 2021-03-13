@@ -23,7 +23,7 @@ namespace engenious.Content.Pipeline
     }
     public class SafeTypeDescriptorWrapper : PropertyDescriptor
     {
-        public static EventHandler WorkaroundEvent;
+        public static EventHandler? WorkaroundEvent;
         private readonly PropertyDescriptor _baseDescriptor;
         public SafeTypeDescriptorWrapper(PropertyDescriptor baseDescriptor) : base(baseDescriptor)
         {
@@ -37,7 +37,7 @@ namespace engenious.Content.Pipeline
             return component != null && _baseDescriptor.CanResetValue(component);
         }
 
-        public override object GetValue(object component)
+        public override object? GetValue(object? component)
         {
             // actually can be false not what ReSharper thinks
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
@@ -73,7 +73,7 @@ namespace engenious.Content.Pipeline
                 // actually can be false not what ReSharper thinks
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 return _baseDescriptor.ShouldSerializeValue(component);
-            }catch(ArgumentNullException ex)
+            }catch(ArgumentNullException)
             {
                 WorkaroundEvent?.Invoke(this,EventArgs.Empty);
                 return false;
