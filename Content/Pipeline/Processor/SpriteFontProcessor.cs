@@ -265,22 +265,22 @@ namespace engenious.Pipeline
             compiled.DefaultCharacter = input.DefaultCharacter;
             
             
-            if (input.FontType == SpriteFontType.MTSDF)
-                testRenderMTSDF(targetData.Scan0, target.Width, target.Height).Save("/home/julian/Projects/engenious.Full/test_render.png",ImageFormat.Png);
-            target.UnlockBits(targetData);
-
-            target.Save("/home/julian/Projects/engenious.Full/test.png",ImageFormat.Png);
-            
-            
-            
-            using var g = System.Drawing.Graphics.FromImage(target);
-            foreach (var bmpKvp in bitmaps)
-            {
-                g.DrawImage(overlay, new System.Drawing.Point());
-            }
-
-            //Saving files
-            target.Save("/home/julian/Projects/engenious.Full/test_regions.png",ImageFormat.Png);
+            // if (input.FontType == SpriteFontType.MTSDF)
+            //     testRenderMTSDF(targetData.Scan0, target.Width, target.Height).Save("/home/julian/Projects/engenious.Full/test_render.png",ImageFormat.Png);
+            // target.UnlockBits(targetData);
+            //
+            // target.Save("/home/julian/Projects/engenious.Full/test.png",ImageFormat.Png);
+            //
+            //
+            //
+            // using var g = System.Drawing.Graphics.FromImage(target);
+            // foreach (var bmpKvp in bitmaps)
+            // {
+            //     g.DrawImage(overlay, new System.Drawing.Point());
+            // }
+            //
+            // //Saving files
+            // target.Save("/home/julian/Projects/engenious.Full/test_regions.png",ImageFormat.Png);
             target.Dispose();
             //System.Diagnostics.Process.Start("test.png"); //TODO: Remove later
 
