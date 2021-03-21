@@ -121,15 +121,7 @@ namespace engenious.Pipeline
                 {
                     if (name == "freetype6")
                     {
-                        switch (PlatformHelper.RunningPlatform())
-                        {
-                            case Platform.Windows:
-                                return NativeLibrary.Load("freetype6.dll", assembly, path);
-                            case Platform.Linux:
-                            case Platform.Mac:
-                                return NativeLibrary.Load("freetype", assembly, path);
-                        }
-
+                        return NativeLibrary.Load("freetype", assembly, path);
                     }
 
                     return IntPtr.Zero;

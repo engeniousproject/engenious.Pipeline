@@ -38,12 +38,15 @@
 
     </ItemGroup>
     <ItemGroup>
-        <SharpFontNativeFiles Include="$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/**/*.*" Condition="Exists('$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/')" />
+        <SharpFontNativeFiles Visible="False" Include="$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/**/*.*" Condition="Exists('$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/')" />
 
+        <SharpFontTransformedNativeFiles Include="@(SharpFontNativeFiles)">
+            <OriginalPath>%(Identity)</OriginalPath>
+            <TrimmedName>$([System.String]::Copy('%(Filename)').TrimEnd('6'))</TrimmedName>
+            <SavedRecursiveDir>runtimes/win-%(RecursiveDir)native/</SavedRecursiveDir>
+            <SavedExtension>%(Extension)</SavedExtension>
+        </SharpFontTransformedNativeFiles>
+        <None Include="@(SharpFontTransformedNativeFiles->'%(OriginalPath)')" Link="%(SavedRecursiveDir)%(TrimmedName)%(SavedExtension)" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
-    <Target Name="CopySharpFontNativeFiles" BeforeTargets="Build">
-        <Copy SourceFiles="@(SharpFontNativeFiles)" DestinationFolder="$(OutDir)\%(RecursiveDir)" SkipUnchangedFiles="true" />
-    </Target>
-
     <Import Project="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')" />
 </Project>
