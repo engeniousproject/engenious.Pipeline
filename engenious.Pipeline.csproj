@@ -9,12 +9,13 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="engenious.SharpFont" Version="4.0.2" />
+        <PackageReference Include="engenious.SharpFont.Dependencies" Version="1.0.0" />
+        <!--        <PackageReference Include="SharpFontStandard" Version="4.0.1" />-->
         <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
         <PackageReference Include="Mono.Cecil" Version="0.11.3" />
         <PackageReference Include="MsdfGen.Net" Version="0.1.5-alpha" />
         <PackageReference Include="OpenTK" Version="4.5.0" />
-        <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" PrivateAssets="all" ExcludeAssets="all" />
-        <PackageReference Include="SharpFontStandard" Version="4.0.1" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
         <PackageReference Include="engenious" Version="0.5.1.1-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
@@ -37,16 +38,16 @@
         </None>
 
     </ItemGroup>
-    <ItemGroup>
-        <SharpFontNativeFiles Visible="False" Include="$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/**/*.*" Condition="Exists('$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/')" />
+<!--    <ItemGroup>-->
+<!--        <SharpFontNativeFiles Visible="False" Include="$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/**/*.*" Condition="Exists('$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/')" />-->
 
-        <SharpFontTransformedNativeFiles Include="@(SharpFontNativeFiles)">
-            <OriginalPath>%(Identity)</OriginalPath>
-            <TrimmedName>$([System.String]::Copy('%(Filename)').TrimEnd('6'))</TrimmedName>
-            <SavedRecursiveDir>runtimes/win-%(RecursiveDir)native/</SavedRecursiveDir>
-            <SavedExtension>%(Extension)</SavedExtension>
-        </SharpFontTransformedNativeFiles>
-        <None Include="@(SharpFontTransformedNativeFiles->'%(OriginalPath)')" Link="%(SavedRecursiveDir)%(TrimmedName)%(SavedExtension)" CopyToOutputDirectory="PreserveNewest" />
-    </ItemGroup>
+<!--        <SharpFontTransformedNativeFiles Include="@(SharpFontNativeFiles)">-->
+<!--            <OriginalPath>%(Identity)</OriginalPath>-->
+<!--            <TrimmedName>$([System.String]::Copy('%(Filename)').TrimEnd('6'))</TrimmedName>-->
+<!--            <SavedRecursiveDir>runtimes/win-%(RecursiveDir)native/</SavedRecursiveDir>-->
+<!--            <SavedExtension>%(Extension)</SavedExtension>-->
+<!--        </SharpFontTransformedNativeFiles>-->
+<!--        <None Include="@(SharpFontTransformedNativeFiles->'%(OriginalPath)')" Link="%(SavedRecursiveDir)%(TrimmedName)%(SavedExtension)" CopyToOutputDirectory="PreserveNewest" />-->
+<!--    </ItemGroup>-->
     <Import Project="engenious.Pipeline.Nuget.props" Condition="Exists('engenious.Pipeline.Nuget.props')" />
 </Project>
