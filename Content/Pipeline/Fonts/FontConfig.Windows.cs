@@ -58,7 +58,7 @@ namespace engenious.Pipeline
 		            string name = fontName;
 		            if (name.EndsWith(" (TrueType)"))
                         name = name.Substring(0, name.Length - " (TrueType)".Length);//TODO: better solution?
-		            _fontFileMap.Add(name, file);
+		            _fontFileMap.TryAdd(name, file); // TODO: better solution workaround for multiple fonts with same names
 		        }
 		    }
 #pragma warning restore CA1416
