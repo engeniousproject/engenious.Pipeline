@@ -3,11 +3,15 @@ using engenious.Content.Pipeline;
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Content type writer to serialize engenious texture content.
+    /// </summary>
     [ContentTypeWriterAttribute()]
     public class TextureContentTypeWriter : ContentTypeWriter<TextureContent>
     {
         #region implemented abstract members of ContentTypeWriter
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, TextureContent? value)
         {
             if (value == null)
@@ -20,11 +24,16 @@ namespace engenious.Content.Serialization
             }
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(Texture2DTypeReader).FullName!;
 
         #endregion
 
-        public TextureContentTypeWriter() : base(0)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="TextureContentTypeWriter"/> class.
+        /// </summary>
+        public TextureContentTypeWriter()
+            : base(0)
         {
         }
     }

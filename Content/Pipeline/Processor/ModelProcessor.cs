@@ -5,23 +5,25 @@ using System.Linq;
 using Assimp;
 using engenious.Content.Pipeline;
 using engenious.Graphics;
-using engenious.Pipeline.Collada;
 using Node = Assimp.Node;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Processor that processes Assimp scenes to engenious models.
+    /// </summary>
     [ContentProcessor(DisplayName = "Model Processor")]
-    public class ModelProcessor : ContentProcessor<Scene, ModelContent,ModelProcessorSettings>
+    public class ModelProcessor : ContentProcessor<Scene, ModelContent, ModelProcessorSettings>
     {
         private NodeContent ParseNode(ModelContent model, Node node,NodeContent? parent = null)
         {
             NodeContent n = new(node.Name, parent);
             model.Nodes.Add(n);
-            if (settings.TransformMesh){
+            if (_settings.TransformMesh){
                 Matrix matrix = ConvertMatrix(node.Transform);
-                matrix.M14 *= settings.Scale.X;
-                matrix.M24 *= settings.Scale.Y;
-                matrix.M34 *= settings.Scale.Z;
+                matrix.M14 *= _settings.Scale.X;
+                matrix.M24 *= _settings.Scale.Y;
+                matrix.M34 *= _settings.Scale.Z;
 
                 n.Transformation = matrix;
             }else
@@ -135,6 +137,8 @@ namespace engenious.Pipeline
                 }
             }
         }
+
+        /// <inheritdoc />
         public override ModelContent? Process(Scene scene, string filename, ContentProcessorContext context)
         {
             try
@@ -163,8 +167,8 @@ namespace engenious.Pipeline
                             if (meshContent.Vertices.HasPositions)
                             {
                                 var pos = sceneMesh.Vertices[i];
-                                var translated = new Vector3(pos.X, pos.Y, pos.Z)+settings.Translate;
-                                meshContent.Vertices.AsPosition![vertex] =new Vector3(translated.X*settings.Scale.X,translated.Y*settings.Scale.Y,translated.Z*settings.Scale.Z);
+                                var translated = new Vector3(pos.X, pos.Y, pos.Z)+_settings.Translate;
+                                meshContent.Vertices.AsPosition![vertex] =new Vector3(translated.X*_settings.Scale.X,translated.Y*_settings.Scale.Y,translated.Z*_settings.Scale.Z);
                             }
 
                             if (meshContent.Vertices.HasNormals)
@@ -229,10 +233,10 @@ namespace engenious.Pipeline
                             var relativeTransform = Matrix.Invert(node.Node.Transformation);
                             
                             var transform = new AnimationTransform(node.Node.Name,
-                                new Vector3((loc.X + settings.Translate.X), (loc.Y + settings.Translate.Y),
-                                    (loc.Z + settings.Translate.Z)),
-                                new Vector3(sca.X * settings.Scale.X, sca.Y * settings.Scale.Y,
-                                    sca.Z * settings.Scale.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
+                                new Vector3((loc.X + _settings.Translate.X), (loc.Y + _settings.Translate.Y),
+                                    (loc.Z + _settings.Translate.Z)),
+                                new Vector3(sca.X * _settings.Scale.X, sca.Y * _settings.Scale.Y,
+                                    sca.Z * _settings.Scale.Z), new Quaternion(rot.X, rot.Y, rot.Z, rot.W));
 
                             var tmp = transform.ToMatrix() * relativeTransform;
 
@@ -266,20 +270,37 @@ namespace engenious.Pipeline
         }
 
     }
+    /// <summary>
+    ///     <see cref="ModelProcessor"/> specific settings.
+    /// </summary>
     [Serializable]
     public class ModelProcessorSettings : ProcessorSettings
     {
+        /// <summary>
+        ///     Gets or sets the scaling transformation to be applied to the model in the processing step.
+        /// </summary>
         [Category("Settings")]
         [DefaultValue("[1, 1, 1]")]
-        public Vector3 Scale{get;set;}=new Vector3(1);
+        public Vector3 Scale { get; set; } = new Vector3(1);
+
+        /// <summary>
+        ///     Gets or sets the translation transformation to be applied to the model in the processing step.
+        /// </summary>
         [Category("Settings")]
         [DefaultValue("[0, 0, 0]")]
-        public Vector3 Translate{get;set;} = new Vector3();
+        public Vector3 Translate { get; set; } = new Vector3();
+
+        /// <summary>
+        ///     Gets or sets the rotation transformation to be applied to the model in the processing step.
+        /// </summary>
         [Category("Settings")]
         [DefaultValue("[0, 0, 0]")]
-        public Vector3 Rotation{get;set;} = new Vector3();
-        [DefaultValue(true)]
-        public bool TransformMesh{get;set;}=true;
+        public Vector3 Rotation { get; set; } = new Vector3();
+
+        /// <summary>
+        ///     Gets or sets a value indicating whether the model should be transformed in the processing step.
+        /// </summary>
+        [DefaultValue(true)] public bool TransformMesh { get; set; } = true;
     }
 }
 

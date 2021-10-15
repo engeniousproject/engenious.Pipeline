@@ -1,26 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Reflection;
 using engenious.Graphics;
-using engenious.Pipeline;
-using engenious.Pipeline.Extensions;
 using engenious.Pipeline.Helper;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
-using Mono.Cecil.Rocks;
-using OpenTK.Graphics.OpenGL;
+using engenious.Content.CodeGenerator;
 
 namespace engenious.Content.Pipeline
 {
+    /// <summary>
+    ///     Processor for processing effect content to content files.
+    /// </summary>
     [ContentProcessor(DisplayName = "Effect Processor")]
     public class EffectProcessor : ContentProcessor<EffectContent, EffectContent, EffectProcessorSettings>
     {
         private static BuildMessageEventArgs.BuildMessageType GetMessageType(string line)
         {
-            var splt = line.Split(new[] {':'}, StringSplitOptions.None);
+            var splt = line.Split(new[] { ':' }, StringSplitOptions.None);
             var messageType = BuildMessageEventArgs.BuildMessageType.None;
             foreach (var s in splt)
             {
@@ -54,7 +53,7 @@ namespace engenious.Content.Pipeline
         private void PreprocessMessage(ContentProcessorContext context, string file, string msg,
             BuildMessageEventArgs.BuildMessageType messageType)
         {
-            string[] lines = msg.Split(new[] {'\n'}, StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = msg.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < lines.Length; i++)
             {
                 messageType = GetMessageType(lines[i]);
@@ -84,69 +83,54 @@ namespace engenious.Content.Pipeline
             }
         }
 
-        private void GenerateEffectSource(string filename, EffectContent input, string @namespace, string name, ContentProcessorContext context)
+        private void GenerateEffectSource(string filename, EffectContent input, string @namespace, string name,
+            ContentProcessorContext context)
         {
-            var mainModule = context.CreatedContent.AssemblyDefinition.MainModule;
-            var createdTypeContainer = context.CreatedContent.AddOrUpdateTypeContainer(context.GetRelativePathToContentDirectory(filename), context.BuildId);
-            AssemblyDefinition engeniousAssembly = AssemblyDefinition.ReadAssembly(typeof(Game).Assembly.Location);
+            var createdTypeContainer =
+                context.CreatedContentCode.AddOrUpdateTypeContainer(context.GetRelativePathToContentDirectory(filename),
+                    context.BuildId);
             string typeNamespace = "engenious.UserDefined" +
-                                     (string.IsNullOrEmpty(@namespace) ? string.Empty : "." + @namespace);
+                                   (string.IsNullOrEmpty(@namespace) ? string.Empty : "." + @namespace);
 
             input.UserEffectName = $"{typeNamespace}.{name}";
-            var baseType = engeniousAssembly.MainModule.GetType("engenious.Graphics.Effect");
-            var effectTechniqueCollectionType =
-                engeniousAssembly.MainModule.GetType("engenious.Graphics.EffectTechniqueCollection");
-            var graphicsDeviceType = mainModule.ImportReference(engeniousAssembly.MainModule.GetType("engenious.Graphics.GraphicsDevice"));
-            TypeDefinition typeDefinition =
-                new TypeDefinition(typeNamespace, name, TypeAttributes.Public | TypeAttributes.Class, mainModule.ImportReference(baseType));
-            
-            createdTypeContainer.Types.Add(typeDefinition);
-            var ctor = new MethodDefinition(".ctor", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName | MethodAttributes.HideBySig, mainModule.TypeSystem.Void);
-            ctor.Parameters.Add(new ParameterDefinition(graphicsDeviceType));
-            var ctorWriter = ctor.Body.GetILProcessor();
-            ctorWriter.Emit(OpCodes.Ldarg_0);
-            ctorWriter.Emit(OpCodes.Ldarg_1);
-            var baseCtor = baseType.Methods.FirstOrDefault(x =>
-                x.Name == ".ctor" && x.Parameters.Count == 1 &&
-                x.Parameters[0].ParameterType.FullName == graphicsDeviceType.FullName);
-            ctorWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseCtor));
-            ctorWriter.Emit(OpCodes.Ret);
-            
+            var baseType = new TypeReference("engenious.Graphics", "Effect");
+            var effectTechniqueCollectionType = new TypeReference("engenious.Graphics", "EffectTechniqueCollection");
+            var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
+            var typeDefinition = new TypeDefinition(typeNamespace, TypeModifiers.Class | TypeModifiers.Public, name,
+                new[] { baseType });
+
+            createdTypeContainer.FileDefinition.Types.Add(typeDefinition.FullName, typeDefinition);
+            var ctor = new ConstructorDefinition(typeDefinition, MethodModifiers.Public,
+                new[] { new ParameterDefinition(graphicsDeviceType, "graphicsDevice") },
+                MethodBodyDefinition.EmptyBody,
+                new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(graphicsDevice)") });
+
             typeDefinition.Methods.Add(ctor);
-            
-            var initializeMethod = new MethodDefinition("Initialize", MethodAttributes.Family | MethodAttributes.Virtual, mainModule.TypeSystem.Void);
-            typeDefinition.Methods.Add(initializeMethod);
-            initializeMethod.Body.Variables.Add(new VariableDefinition(mainModule.ImportReference(effectTechniqueCollectionType)));
-            var initializeWriter = initializeMethod.Body.GetILProcessor();
-            initializeWriter.Emit(OpCodes.Ldarg_0);
-            var baseInitialize = baseType.Methods.First(x => x.Parameters.Count == 0 && x.Name == "Initialize");
-            initializeWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseInitialize));
-            var techniquesProperty = baseType.Properties.First(x => x.Name == "Techniques");
-            
-            initializeWriter.Emit(OpCodes.Ldarg_0);
-            initializeWriter.Emit(OpCodes.Call, mainModule.ImportReference(techniquesProperty.GetMethod));
-            initializeWriter.Emit(OpCodes.Stloc_0);
-            var techniquesGetItem = techniquesProperty.PropertyType.Resolve().Methods.First(x =>
-            {
-                return x.Parameters.Count == 1 && x.Name == "get_Item" && x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName;
-            });
+
+            var initializeMethod = new ImplementedMethodDefinition(
+                new SignatureDefinition(MethodModifiers.Protected | MethodModifiers.Override, TypeSystem.Void,
+                    "Initialize",
+                    Array.Empty<ParameterDefinition>()), null);
+
+            using var expressionBuilder = new ExpressionBuilder();
+
+            expressionBuilder.Append("base.Initialize();");
+            expressionBuilder.Append("var techniques = Techniques;");
             foreach (var technique in input.Techniques)
             {
-                var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique, engeniousAssembly);
-                var (p, _) = typeDefinition.AddAutoProperty(techniqueType, technique.Name, MethodAttributes.Public,
-                    MethodAttributes.Private);
-                
-                initializeWriter.Emit(OpCodes.Ldarg_0);
-                initializeWriter.Emit(OpCodes.Ldloc_0);
-                initializeWriter.Emit(OpCodes.Ldstr, technique.Name);
-                initializeWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(techniquesGetItem));
-                
-                initializeWriter.Emit(OpCodes.Isinst, techniqueType);
-                initializeWriter.Emit(OpCodes.Call, p.SetMethod);
-            }
-            
-            initializeWriter.Emit(OpCodes.Ret);
+                var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique);
+                var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, techniqueType, technique.Name,
+                    setterModifiers: MethodModifiers.Private);
 
+                expressionBuilder.Append($"{p.Name} = techniques[\"{technique.Name}\"] as {techniqueType.Name};");
+            }
+
+            initializeMethod = initializeMethod with
+                               {
+                                   MethodBody = new MethodBodyDefinition(expressionBuilder.ToExpression())
+                               };
+
+            typeDefinition.Methods.Add(initializeMethod);
         }
 
         struct ParameterReference
@@ -161,77 +145,65 @@ namespace engenious.Content.Pipeline
             public ParameterInfo ParameterInfo;
         }
 
-        private TypeDefinition GenerateEffectTechniqueSource(TypeDefinition parent, EffectTechnique technique, AssemblyDefinition engeniousAssembly)
+        private TypeDefinition GenerateEffectTechniqueSource(TypeDefinition parent, EffectTechnique technique)
         {
-            var mainModule = parent.Module;
             technique.UserTechniqueName = $"{technique.Name}Impl";
-            
-            var baseType = engeniousAssembly.MainModule.GetType("engenious.Graphics.EffectTechnique");
-            var effectPassCollectionType =
-                engeniousAssembly.MainModule.GetType("engenious.Graphics.EffectPassCollection");
-            var graphicsDeviceType = engeniousAssembly.MainModule.GetType("engenious.Graphics.GraphicsDevice");
-            TypeDefinition typeDefinition =
-                new TypeDefinition(string.Empty,$"{technique.Name}Impl", TypeAttributes.Class | TypeAttributes.NestedPublic, mainModule.ImportReference(baseType));
+
+            var baseType = new TypeReference("engenious.Graphics", "EffectTechnique");
+            var effectPassCollectionType = new TypeReference("engenious.Graphics", "EffectPassCollection");
+            var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
+            var typeDefinition = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public,
+                $"{technique.Name}Impl",
+                new[] { baseType });
 
             parent.NestedTypes.Add(typeDefinition);
-            var ctor = new MethodDefinition(".ctor", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName | MethodAttributes.HideBySig, mainModule.TypeSystem.Void);
-            ctor.Parameters.Add(new ParameterDefinition(mainModule.TypeSystem.String));
-            var ctorWriter = ctor.Body.GetILProcessor();
-            ctorWriter.Emit(OpCodes.Ldarg_0);
-            ctorWriter.Emit(OpCodes.Ldarg_1);
-            var baseCtor = baseType.Methods.FirstOrDefault(x =>
-                x.Name == ".ctor" && x.Parameters.Count == 1 &&
-                x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
-
-            ctorWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseCtor));
-            ctorWriter.Emit(OpCodes.Ret);
-            
+            var ctor = new ConstructorDefinition
+            (
+                typeDefinition, MethodModifiers.Public,
+                new[] { new ParameterDefinition(TypeSystem.String, "name") }, MethodBodyDefinition.EmptyBody,
+                new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(name)") }
+            );
             typeDefinition.Methods.Add(ctor);
-            
-            var initializeMethod = new MethodDefinition("Initialize", MethodAttributes.Family | MethodAttributes.Virtual, mainModule.TypeSystem.Void);
-            typeDefinition.Methods.Add(initializeMethod);
-            initializeMethod.Body.Variables.Add(new VariableDefinition(mainModule.ImportReference(effectPassCollectionType)));
-            var initializeWriter = initializeMethod.Body.GetILProcessor();
-            initializeWriter.Emit(OpCodes.Ldarg_0);
-            var baseInitialize = baseType.Methods.First(x => x.Parameters.Count == 0 && x.Name == "Initialize");
-            initializeWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseInitialize));
-            
-            var passesProperty = baseType.Properties.First(x => x.Name == "Passes");
-            
-            initializeWriter.Emit(OpCodes.Ldarg_0);
-            initializeWriter.Emit(OpCodes.Call, mainModule.ImportReference(passesProperty.GetMethod));
-            initializeWriter.Emit(OpCodes.Stloc_0);
-            var passesGetItem = passesProperty.PropertyType.Resolve().Methods.First(x => x.Parameters.Count == 1 && x.Name == "get_Item" && x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
 
-            var passTypeDefinitions = new Dictionary<string, (TypeDefinition,PropertyDefinition)>();
-            
+            var initializeMethod = new ImplementedMethodDefinition(
+                new SignatureDefinition(MethodModifiers.Override | MethodModifiers.Protected, TypeSystem.Void,
+                    "Initialize", Array.Empty<ParameterDefinition>()), null);
+
+            using var initializeMethodBuilder = new ExpressionBuilder();
+            initializeMethodBuilder.Append("base.Initialize();");
+            initializeMethodBuilder.Append("var passes = Passes;");
+
+            var passTypeDefinitions = new Dictionary<string, (TypeDefinition, PropertyDefinition)>();
+
             foreach (var pass in technique.Passes)
             {
-                var passType = GenerateEffectPassSource(typeDefinition, pass, engeniousAssembly);
+                var passType = GenerateEffectPassSource(typeDefinition, pass);
                 if (passType == null)
                 {
                     throw new Exception($"Unable to create IL code for {pass.Name} EffectPass");
                 }
-                var (p, _) = typeDefinition.AddAutoProperty(passType, pass.Name, MethodAttributes.Public,
-                    MethodAttributes.Private);
-                
-                initializeWriter.Emit(OpCodes.Ldarg_0);
-                initializeWriter.Emit(OpCodes.Ldloc_0);
-                initializeWriter.Emit(OpCodes.Ldstr, pass.Name);
-                initializeWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(passesGetItem));
-                
-                initializeWriter.Emit(OpCodes.Isinst, passType);
-                initializeWriter.Emit(OpCodes.Call, p.SetMethod);
+
+                var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, passType, pass.Name,
+                    setterModifiers: MethodModifiers.Private);
+
+                initializeMethodBuilder.Append($"{p.Name} = passes[\"{pass.Name}\"] as {passType.Name};");
+
                 passTypeDefinitions.Add(pass.Name, (passType, p));
             }
-            
-            initializeWriter.Emit(OpCodes.Ret);
+
+            initializeMethod = initializeMethod with
+                               {
+                                   MethodBody = new MethodBodyDefinition(initializeMethodBuilder.ToExpression())
+                               };
+            typeDefinition.Methods.Add(initializeMethod);
 
             var parameters = new Dictionary<string, List<ParameterReference>?>();
             foreach (var pass in technique.Passes)
             {
                 foreach (var param in pass.Parameters)
                 {
+                    if (param.Name.StartsWith('\''))
+                        continue;
                     if (!parameters.TryGetValue(param.Name, out var paramList))
                     {
                         paramList = new List<ParameterReference>();
@@ -260,215 +232,352 @@ namespace engenious.Content.Pipeline
             }
 
 
-            foreach (var (name,parameterReferences) in parameters)
+            foreach (var (name, parameterReferences) in parameters)
             {
                 if (parameterReferences == null || parameterReferences.Count == 0)
                     continue;
-                var propertyType = mainModule.ImportReference(parameterReferences[0].ParameterInfo.Type);
-                var prop = new PropertyDefinition(name, PropertyAttributes.None, propertyType);
-                var setter =
-                    new MethodDefinition($"set_{name}", MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.Public,
-                        parent.Module.TypeSystem.Void);
-                setter.Parameters.Add(new ParameterDefinition("value", ParameterAttributes.None, propertyType));
-                typeDefinition.Methods.Add(setter);
-                prop.SetMethod = setter;
-                typeDefinition.Properties.Add(prop);
+                var propertyType = new TypeReference(parameterReferences[0].ParameterInfo.Type.Namespace,
+                    parameterReferences[0].ParameterInfo.Type.Name);
 
-                var setterWriter = setter.Body.GetILProcessor();
-                
+                bool isPrimitive = !string.IsNullOrEmpty(propertyType.Namespace);
+
+                if (parameterReferences[0].ParameterInfo is ArrayParameterInfo arrayParameterInfo)
+                {
+                    propertyType = new TypeReference(null, $"{parameterReferences[0].Pass.Name}Impl.{arrayParameterInfo.Name}Array");
+                }
+                else if (parameterReferences[0].ParameterInfo is StructParameterInfo structParameterInfo)
+                {
+                    propertyType = new TypeReference(null, $"{parameterReferences[0].Pass.Name}Impl.{structParameterInfo.Name.TrimStart('\'')}Wrapper");
+                }
+
+                if (!isPrimitive && parameterReferences.Count > 1)
+                    continue;
+
+                var setterWriter = new ExpressionBuilder();
                 foreach (var parameterReference in parameterReferences)
                 {
                     var (passType, passProperty) = passTypeDefinitions[parameterReference.Pass.Name];
-                    var basePassProperty = passType.Properties.First(x => x.Name == name);
-                    
-                    setterWriter.Emit(OpCodes.Ldarg_0);
-                    setterWriter.Emit(OpCodes.Call, passProperty.GetMethod);
-                    setterWriter.Emit(OpCodes.Ldarg_1);
-                    setterWriter.Emit(OpCodes.Call, basePassProperty.SetMethod);
 
-                    setterWriter.Emit(OpCodes.Ret);
+                    if (isPrimitive)
+                        setterWriter.Append($"{passProperty.Name}.{name} = value");
+                    else
+                        setterWriter.Append($"{passProperty.Name}.{name}");
                 }
+
+                var m = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(setterWriter.ToExpression()),
+                    isPrimitive);
+
+                var prop = new PropertyDefinition(MethodModifiers.Public, propertyType, name, isPrimitive ? null : m, isPrimitive ? m : null);
+
+                typeDefinition.Properties.Add(prop);
             }
 
             return typeDefinition;
         }
-        
-        private TypeDefinition? GenerateEffectPassSource(TypeDefinition parent, EffectPass pass, AssemblyDefinition engeniousAssembly)
+
+        private bool TryGenerateArray(TypeDefinition parent, ParameterInfo parameterInfo, ExpressionBuilder cacheParametersWriter, [MaybeNullWhen(false)] out ArrayParameterInfo arrayParameterInfo)
         {
-            var mainModule = parent.Module;
+            arrayParameterInfo = parameterInfo as ArrayParameterInfo;
+            if (arrayParameterInfo == null)
+                return false;
+
+            var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public,
+                $"{arrayParameterInfo.Name}Array", null);
+            typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
+                new[]
+                {
+                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass"),
+                    new ParameterDefinition(TypeSystem.Int32, "offset")
+                },
+                new MethodBodyDefinition(
+                    new BlockExpressionDefinition(
+                        new MultilineExpressionDefinition(new CodeExpressionDefinition[]
+                                                          { "Pass = pass;", "Offset = offset;", "_valueAccessor = new(pass, 0);" })))));
+
+            var builder = new ExpressionBuilder();
+
+            bool isPrimitive = !string.IsNullOrEmpty(arrayParameterInfo.Type.Namespace);
+
+            var propTypeRef = new TypeReference(parameterInfo.Type.Namespace,
+                parameterInfo.Type.Name.TrimStart('\'') + "Wrapper");
+            if (isPrimitive)
+            {
+                builder.Append($"if (index < 0 || index >= {arrayParameterInfo.Length})");
+                builder.Append(new SimpleExpressionDefinition("throw new System.ArgumentOutOfRangeException(nameof(index));", 1));
+                builder.Append("engenious.Graphics.EffectPassParameter.SetValue(Pass, Offset + index, value);");
+            }
+            else
+            {
+                var fld = new FieldDefinition(GenericModifiers.Private, propTypeRef, $"_valueAccessor");
+                typeDef.Fields.Add(fld);
+                // cacheParametersWriter.Append("");
+                builder.Append($"{fld.Name}.Offset =  Offset + index * {arrayParameterInfo.LayoutSize / arrayParameterInfo.Length};");
+                builder.Append($"return _valueAccessor;");
+            }
             
-            var baseType = engeniousAssembly.MainModule.GetType("engenious.Graphics.EffectPass");
+            typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public,
+                new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null));
+
+            typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, TypeSystem.Int32, "Offset",
+                new SimplePropertyGetter(), new SimplePropertySetter()));
+
+            var m = new ImplementedPropertyMethodDefinition(
+                new MethodBodyDefinition(builder.ToExpression()), isPrimitive);
+            
+            typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, propTypeRef, "this",
+                isPrimitive ? null : m, isPrimitive ? m : null,
+                IndexerType: TypeSystem.Int32, IndexerName: "index"));
+            
+
+            parent.NestedTypes.Add(typeDef);
+
+            return true;
+        }
+
+        private bool TryGenerateStruct(TypeDefinition parent, ParameterInfo parameterInfo, [MaybeNullWhen(false)] out StructParameterInfo structParameterInfo)
+        {
+            structParameterInfo = parameterInfo as StructParameterInfo;
+            if (structParameterInfo == null)
+                return false;
+            var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public,
+                structParameterInfo.Name.TrimStart('\'') + "Wrapper", null);
+
+
+
+            typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public,
+                new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null));
+
+            typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, TypeSystem.Int32, "Offset",
+                new SimplePropertyGetter(), new SimplePropertySetter()));
+
+            var ctorBuilder = new ExpressionBuilder();
+                
+            ctorBuilder.Append("Pass = pass;");
+            ctorBuilder.Append("Offset = offset;");
+            int index = 0;
+            foreach (var p in structParameterInfo.SubParameters)
+            {
+                if (TryGenerateStruct(typeDef, p, out var subStructParam))
+                {
+                    var subField = new FieldDefinition(GenericModifiers.Private, subStructParam.Type,
+                        $"_{subStructParam.Name}");
+                    typeDef.Fields.Add(subField);
+                    ctorBuilder.Append($"{subField.Name} = new (pass, {subStructParam.AttributeName};");
+                }
+                var pName = p.Name.TrimStart('\'');
+                var (prop, field) = typeDef.CreateEmptyProperty(MethodModifiers.Public, p.Type, pName, $"_{pName}");
+
+                var builder = new ExpressionBuilder();
+                
+                builder.Append($"{field.Name} = value;");
+                builder.Append($"engenious.Graphics.EffectPassParameter.SetValue(Pass, Offset + {index++}, value);");
+
+                
+                prop = prop with
+                       {
+                            GetMethod = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition($"{field.Name}"), false),
+                            SetMethod = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(builder.ToExpression()), true)
+                       };
+                typeDef.Properties.Add(prop);
+                typeDef.Fields.Add(field);
+            }
+
+            typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
+                new[]
+                {
+                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass"),
+                    new ParameterDefinition(TypeSystem.Int32, "offset")
+                },
+                new MethodBodyDefinition(ctorBuilder.ToExpression())));
+            parent.NestedTypes.Add(typeDef);
+
+            return true;
+        }
+
+        private static readonly HashSet<Assembly> _assemblies = new();
+
+        private static HashSet<Assembly> GetAssemblies(Assembly? asm = null)
+        {
+            if (asm == null)
+            {
+                asm = Assembly.GetCallingAssembly();
+            }
+
+            if (_assemblies.Contains(asm))
+                return _assemblies;
+
+            _assemblies.Add(asm);
+            foreach (var aRef in asm.GetReferencedAssemblies())
+            {
+                GetAssemblies(Assembly.Load(aRef));
+            }
+
+            return _assemblies;
+        }
+
+        private static Type? GetType(TypeReference typeRef)
+        {
+            foreach (var asm in GetAssemblies())
+            {
+                var tp = asm.GetType(typeRef.ToString());
+                if (tp != null)
+                    return tp;
+            }
+
+            return null;
+        }
+
+        private TypeDefinition? GenerateEffectPassSource(TypeDefinition parent, EffectPass pass)
+        {
+            var baseType = new TypeReference("engenious.Graphics", "EffectPass");
             var effectPassParameterCollectionType =
-                engeniousAssembly.MainModule.GetType("engenious.Graphics.EffectPassParameterCollection");
-            var effectPassParameterType =
-                engeniousAssembly.MainModule.GetType("engenious.Graphics.EffectPassParameter");
-            var graphicsDeviceType =
-                engeniousAssembly.MainModule.GetType("engenious.Graphics.GraphicsDevice");
-            TypeDefinition typeDefinition =
-                new TypeDefinition(string.Empty,$"{pass.Name}Impl", TypeAttributes.Class | TypeAttributes.NestedPublic, mainModule.ImportReference(baseType));
+                new TypeReference("engenious.Graphics", "EffectPassParameterCollection");
+            var effectPassParameterType = new TypeReference("engenious.Graphics", "EffectPassParameter");
+            var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
+            var typeDefinition =
+                new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public, $"{pass.Name}Impl",
+                    new[] { baseType });
 
             parent.NestedTypes.Add(typeDefinition);
-            
-            var ctor = new MethodDefinition(".ctor", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName | MethodAttributes.HideBySig, mainModule.TypeSystem.Void);
-            ctor.Parameters.Add(new ParameterDefinition(mainModule.ImportReference(graphicsDeviceType)));
-            ctor.Parameters.Add(new ParameterDefinition(mainModule.TypeSystem.String));
-            var ctorWriter = ctor.Body.GetILProcessor();
-            ctorWriter.Emit(OpCodes.Ldarg_0);
-            ctorWriter.Emit(OpCodes.Ldarg_1);
-            ctorWriter.Emit(OpCodes.Ldarg_2);
-            var baseCtor = baseType.Methods.FirstOrDefault(x =>
-                x.Name == ".ctor" && x.Parameters.Count == 2 &&
-                x.Parameters[0].ParameterType.FullName == typeof(GraphicsDevice).FullName &&
-                x.Parameters[1].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
-            ctorWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseCtor));
-            ctorWriter.Emit(OpCodes.Ret);
+
+            var ctor = new ConstructorDefinition(typeDefinition,
+                MethodModifiers.Public,
+                new[]
+                {
+                    new ParameterDefinition(graphicsDeviceType, "graphicsDevice"),
+                    new ParameterDefinition(TypeSystem.String, "name")
+                },
+                MethodBodyDefinition.EmptyBody,
+                new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(graphicsDevice, name)") });
 
             typeDefinition.Methods.Add(ctor);
-            
-            var cacheParametersMethod = new MethodDefinition("CacheParameters", MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.Family, mainModule.TypeSystem.Void);
 
-            typeDefinition.Methods.Add(cacheParametersMethod);
-            
-            cacheParametersMethod.Body.Variables.Add(new VariableDefinition(mainModule.ImportReference(effectPassParameterCollectionType)));
-            var cacheParametersWriter = cacheParametersMethod.Body.GetILProcessor();
-            cacheParametersWriter.Emit(OpCodes.Ldarg_0);
-            var baseCacheParameters = baseType.Methods.First(x => x.Parameters.Count == 0 && x.Name == "CacheParameters");
-            cacheParametersWriter.Emit(OpCodes.Call, mainModule.ImportReference(baseCacheParameters));
-            
-            var paramsProperty = baseType.Properties.First(x => x.Name == "Parameters");
+            var cacheParametersMethod = new ImplementedMethodDefinition(
+                new SignatureDefinition(MethodModifiers.Override | MethodModifiers.Protected, TypeSystem.Void,
+                    "CacheParameters", Array.Empty<ParameterDefinition>()),
+                null);
 
-            cacheParametersWriter.Emit(OpCodes.Ldarg_0);
-            cacheParametersWriter.Emit(OpCodes.Call, mainModule.ImportReference(paramsProperty.GetMethod));
-            cacheParametersWriter.Emit(OpCodes.Stloc_0);
-            var paramsGetItem = paramsProperty.PropertyType.Resolve().Methods.First(x => x.Parameters.Count == 1 && x.Name == "get_Item" && x.Parameters[0].ParameterType.FullName == mainModule.TypeSystem.String.FullName);
+            var cacheParametersWriter = new ExpressionBuilder();
+            cacheParametersWriter.Append("base.CacheParameters();");
+
+            cacheParametersWriter.Append("var parameters = Parameters;");
+
             foreach (var p in pass.Parameters)
             {
-                var paramType = mainModule.ImportReference(p.Type.ToCecilTypeRef().Resolve());
-
-                var isStandardType = p.Type == typeof(EffectPassParameter);
-                
-                if (isStandardType)
-                    cacheParametersWriter.Emit(OpCodes.Ldarg_0);
-                cacheParametersWriter.Emit(OpCodes.Ldarg_0);
-                cacheParametersWriter.Emit(OpCodes.Ldloc_0);
-                    
-                cacheParametersWriter.Emit(OpCodes.Ldstr, p.Name);
-                cacheParametersWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(paramsGetItem));
-                if (isStandardType)
+                if (TryGenerateStruct(typeDefinition, p, out var structParameterInfo))
                 {
-                    var (paramProp, _) = typeDefinition.AddAutoProperty(paramType, p.Name,
-                        MethodAttributes.Public, MethodAttributes.Private);
+                    if (structParameterInfo.Name.StartsWith('\''))
+                        continue;
+                    var structType = new TypeReference(null, $"{structParameterInfo.Name}Wrapper");
+                    var f = new FieldDefinition(GenericModifiers.Private, structType, $"_{p.Name}");
                     
-                    cacheParametersWriter.Emit(OpCodes.Call, paramProp.SetMethod);
+                    var prop = new PropertyDefinition(MethodModifiers.Public, structType, p.Name,
+                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false), null);
+                    cacheParametersWriter.Append($"{f.Name} = new (this,parameters[\"{structParameterInfo.AttributeName}\"].Location);");
+                    
+                    typeDefinition.Fields.Add(f);
+                    typeDefinition.Properties.Add(prop);
+                    continue;
+                }
+                if (TryGenerateArray(typeDefinition, p, cacheParametersWriter, out var arrayParameterInfo))
+                {
+                    var arrType = new TypeReference(null, $"{arrayParameterInfo.Name}Array");
+                    var f = new FieldDefinition(GenericModifiers.Private, arrType, $"_{p.Name}");
+                    var prop = new PropertyDefinition(MethodModifiers.Public, arrType, p.Name,
+                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false), null);
+                    cacheParametersWriter.Append($"{f.Name} = new (this, parameters[\"{arrayParameterInfo.AttributeName}\"].Location);");
+
+                    typeDefinition.Fields.Add(f);
+                    typeDefinition.Properties.Add(prop);
+                    continue;
+                }
+                var paramType = new TypeReference(p.Type.Namespace, p.Type.Name);
+                if (p.Type.Namespace == typeof(EffectPassParameter).Namespace && p.Type.Name == nameof(EffectPassParameter))
+                {
+                    var paramProp = typeDefinition.AddAutoProperty(MethodModifiers.Public, paramType, p.Name,
+                        setterModifiers: MethodModifiers.Private);
+
+                    cacheParametersWriter.Append($"{paramProp.Name} = parameters[\"{p.Name}\"];");
                 }
                 else
                 {
-                    var effectPassParamField = new FieldDefinition($"_{p.Name}PassParameter", FieldAttributes.Private, mainModule.ImportReference(effectPassParameterType));
-
+                    var effectPassParamField = new FieldDefinition(GenericModifiers.Private, effectPassParameterType,
+                        $"_{p.Name}PassParameter");
                     typeDefinition.Fields.Add(effectPassParamField);
-                    cacheParametersWriter.Emit(OpCodes.Stfld, effectPassParamField);
-                    
-                    var (paramProp, paramField) = typeDefinition.AddEmptyProperty(paramType, p.Name,
-                        MethodAttributes.Public, MethodAttributes.Public, $"_{p.Name}");
-                    
-                    var getWriter = paramProp.GetMethod.Body.GetILProcessor();
-                    getWriter.Emit(OpCodes.Ldarg_0);
-                    getWriter.Emit(OpCodes.Ldfld, paramField);
-                    getWriter.Emit(OpCodes.Ret);
+                    cacheParametersWriter.Append($"{effectPassParamField.Name} = parameters[\"{p.Name}\"];");
 
-                    var setWriter = paramProp.SetMethod.Body.GetILProcessor();
 
-                    var retOp = setWriter.Create(OpCodes.Ret);
-                    setWriter.Emit(OpCodes.Ldarg_0);
-                    setWriter.Emit(OpCodes.Ldfld, paramField);
-                    
+                    var (paramProp, paramField) =
+                        typeDefinition.CreateEmptyProperty(MethodModifiers.Public, paramType, p.Name, $"_{p.Name}");
+                    typeDefinition.Fields.Add(paramField);
+                    var getter = new MethodBodyDefinition($"{paramField.Name}");
 
-                    var insertPos = setWriter.Create(OpCodes.Ldarg_1);
-                    setWriter.Append(insertPos);
-                    
-                    setWriter.Emit(OpCodes.Ret);
+                    var setWriter = new ExpressionBuilder();
 
-                    var branch = setWriter.Create(OpCodes.Ldarg_0);
-                    setWriter.Append(branch);
-                    setWriter.Emit(OpCodes.Ldarg_1);
-                    setWriter.Emit(OpCodes.Stfld, paramField);
-
-                    setWriter.Emit(OpCodes.Ldarg_0);
-                    
-                    setWriter.Emit(OpCodes.Ldfld, effectPassParamField);
-                    setWriter.Emit(OpCodes.Ldarg_1);
-                    
-                    var resolvedParamType = paramType.Resolve();
-                    var setValue = effectPassParameterType.Methods.First(x =>
+                    static MethodInfo? FindMatchingMethod(Type resolvedParamType,
+                        Func<MethodInfo, bool> methodConstraint)
                     {
-                        return  x.Name == "SetValue" &&
-                            (x.Parameters[0].ParameterType.FullName == resolvedParamType.FullName ||
-                             x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
-                    });
-                    setWriter.Emit(OpCodes.Callvirt, mainModule.ImportReference(setValue));
-                    
-                    setWriter.Append(retOp);
-
-
-                    static MethodDefinition? FindMatchingMethod(TypeDefinition resolvedParamType, Func<MethodDefinition, bool> methodConstrainer)
-                    {
-                        var res = resolvedParamType.Methods.FirstOrDefault(methodConstrainer);
+                        var res = resolvedParamType.GetMethods().FirstOrDefault(methodConstraint);
                         if (res != null)
                             return res;
                         var curParamType = resolvedParamType;
                         while (res == null)
                         {
-                            curParamType = curParamType.BaseType?.Resolve();
+                            curParamType = curParamType.BaseType;
                             if (curParamType == null)
                                 return null;
-                            res = curParamType.Methods.FirstOrDefault(methodConstrainer);
+                            res = curParamType.GetMethods().FirstOrDefault(methodConstraint);
                         }
 
                         return res;
                     }
-
-                    MethodDefinition? opEquality = null;
-                    if (!resolvedParamType.IsPrimitive)
-                        opEquality = FindMatchingMethod(resolvedParamType,
-                                         x => x.Name == "op_Equality" && !x.HasThis && x.Parameters.Count == 2 && x.Parameters[0].ParameterType == x.Parameters[1].ParameterType && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType))
-                                     ??  FindMatchingMethod(resolvedParamType, x => x.Name == "Equals" && x.HasThis && x.Parameters.Count == 1
-                                         && x.Parameters[0].ParameterType.Resolve().IsAssignableFrom(resolvedParamType));
-
-                    if (opEquality != null)
-                    {
-                        if (opEquality.Name == "Equals")
-                        {
-                            var valNullCheck = setWriter.Create(OpCodes.Ldarg_1);
-                            var earlyExit = setWriter.Create(OpCodes.Ret);
-                            var jump = setWriter.Create(OpCodes.Bne_Un, valNullCheck);
-                            setWriter.InsertAfter(insertPos, jump);
-                            setWriter.InsertAfter(jump, earlyExit);
-                            setWriter.InsertAfter(earlyExit, valNullCheck);
-                            insertPos = setWriter.Create(OpCodes.Brfalse_S, branch);
-                            setWriter.InsertAfter(valNullCheck, insertPos);
-
-                            var ldArg1 = setWriter.Create(OpCodes.Ldarg_1);
-                            setWriter.InsertAfter(insertPos, ldArg1);
-                            insertPos = Instruction.Create(OpCodes.Ldarg_0);
-                            setWriter.InsertAfter(ldArg1, insertPos);
-
-                            var ldFld = setWriter.Create(OpCodes.Ldfld, effectPassParamField);
-                            setWriter.InsertAfter(insertPos, ldFld);
-                            insertPos = ldFld;
-                        }
-                        var eqCheck = setWriter.Create(OpCodes.Call, mainModule.ImportReference(opEquality));
-                        setWriter.InsertAfter(insertPos, eqCheck);
                     
-                        setWriter.InsertAfter(eqCheck, setWriter.Create(OpCodes.Brfalse, branch));
-                    }
-                    else
-                    {
-                        setWriter.InsertAfter(insertPos, setWriter.Create(OpCodes.Bne_Un, branch));
-                    }
-                }
+                    var resolvedType = GetType(p.Type);
+                    if (resolvedType == null)
+                        continue;
 
+                    bool isSimple = resolvedType.IsPrimitive || FindMatchingMethod(resolvedType,
+                        x =>
+                        {
+                            var parameters = x.GetParameters();
+                            return x.Name == "op_Equality" && x.IsStatic && parameters.Length == 2 &&
+                                   parameters[0].ParameterType == parameters[1].ParameterType &&
+                                   parameters[0].ParameterType.IsAssignableFrom(resolvedType);
+                        }) != null;
+
+                    if (!isSimple)
+                        isSimple = FindMatchingMethod(resolvedType,
+                            x =>
+                            {
+                                var parameters = x.GetParameters();
+                                return x.Name == "Equals" && !x.IsStatic && parameters.Length == 1
+                                       && parameters[0].ParameterType.IsAssignableFrom(resolvedType);
+                            }) == null;
+
+                    setWriter.Append(
+                        $"if ({paramField.Name} == value{(isSimple ? string.Empty : $" || (value != null && value.Equals({paramField.Name}))")})");
+
+                    setWriter.Append(new SimpleExpressionDefinition("return;", 1));
+
+                    setWriter.Append($"{paramField.Name} = value;");
+                    setWriter.Append($"{effectPassParamField.Name}.SetValue(value);");
+
+                    paramProp = paramProp with
+                                {
+                                    GetMethod = new ImplementedPropertyMethodDefinition(getter, false),
+                                    SetMethod = new ImplementedPropertyMethodDefinition(
+                                        new MethodBodyDefinition(setWriter.ToExpression()), true)
+                                };
+
+                    typeDefinition.Properties.Add(paramProp);
+                }
             }
-            cacheParametersWriter.Emit(OpCodes.Ret);
+
+            cacheParametersMethod = cacheParametersMethod with
+                                    {
+                                        MethodBody = new MethodBodyDefinition(cacheParametersWriter.ToExpression())
+                                    };
+            typeDefinition.Methods.Add(cacheParametersMethod);
 
             return typeDefinition;
         }
@@ -524,24 +633,27 @@ namespace engenious.Content.Pipeline
             return t;
         }
 
+        /// <inheritdoc />
         public override EffectContent? Process(EffectContent input, string filename, ContentProcessorContext context)
         {
+            var game = (IGame)context.Game;
+            
             try
             {
                 var success = true;
-                input.CreateUserEffect = settings.CreateUserEffect;
+                input.CreateUserEffect = _settings.CreateUserEffect;
                 //Passthrough and verification
                 foreach (var technique in input.Techniques)
                 {
                     foreach (var pass in technique.Passes)
                     {
-                        Graphics.EffectPass compiledPass = new Graphics.EffectPass(context.GraphicsDevice, pass.Name);
+                        Graphics.EffectPass compiledPass = new Graphics.EffectPass(game.GraphicsDevice, pass.Name);
 
                         foreach (var shader in pass.Shaders)
                         {
                             try
                             {
-                                var tmp = new Shader(context.GraphicsDevice, shader.Key,
+                                var tmp = new Shader(game.GraphicsDevice, shader.Key,
                                     File.ReadAllText(shader.Value));
                                 tmp.Compile();
                                 compiledPass.AttachShader(tmp);
@@ -563,9 +675,93 @@ namespace engenious.Content.Pipeline
 
                         compiledPass.CacheParameters();
 
+                        Dictionary<string, ParameterInfo> subs = new();
+
                         foreach (var p in compiledPass.Parameters)
                         {
+                            var dotInd = p.Name.LastIndexOf('.');
+                            if (dotInd != -1)
+                            {
+                                var subName = p.Name[..dotInd];
+
+                                var prevIndex = p.Name.LastIndexOf('.', dotInd - 1);
+                                if (prevIndex == -1)
+                                {
+                                    prevIndex = 0;
+                                }
+
+                                var structName = p.Name[prevIndex..dotInd];
+
+                                if (structName.EndsWith(']'))
+                                {
+                                    var beg = structName.LastIndexOf('[');
+                                    int arrayIndex = int.Parse(structName[(beg + 1)..^1]);
+                                    var arrayName = structName[..(beg)];
+                                    structName =
+                                        arrayName.EndsWith("s") ? $"'{arrayName[..^1]}" : "'unnamedStructTODO"; // TODO:
+
+                                    if (!subs.TryGetValue(arrayName, out var param))
+                                    {
+                                        var typeRef = p.Name.EndsWith("]") ? GetType(p.Type).ToTypeReference() : new TypeReference(null, structName);
+                                        param = new ArrayParameterInfo(p.Name, arrayName, typeRef, 0);
+                                        subs.Add(arrayName, param);
+                                        pass.Parameters.Add(param);
+                                    }
+
+                                    ((ArrayParameterInfo)param).Length = arrayIndex + 1;
+                                }
+
+                                {
+                                    if (!subs.TryGetValue(structName, out var param))
+                                    {
+                                        param = new StructParameterInfo(p.Name, structName, new TypeReference(null, structName), 0);
+                                        subs.Add(structName, param);
+                                        pass.Parameters.Add(param);
+                                    }
+
+                                    ((StructParameterInfo)param).SubParameters.Add(
+                                        new ParameterInfo(p.Name[(dotInd + 1)..], GetType(p.Type)));
+                                }
+                                continue;
+                            }
+
                             pass.Parameters.Add(new ParameterInfo(p.Name, GetType(p.Type)));
+                        }
+
+                        int calcLayoutSize(TypeReference typeRef)
+                        {
+                            if (!subs.TryGetValue(typeRef.ToString(), out var parameterInfo)) 
+                                return 1;
+                            switch (parameterInfo)
+                            {
+                                case StructParameterInfo structParameterInfo:
+                                {
+                                    if (structParameterInfo.LayoutSize != 0)
+                                        return structParameterInfo.LayoutSize;
+                                    foreach (var s in structParameterInfo.SubParameters)
+                                        structParameterInfo.LayoutSize += calcLayoutSize(s.Type);
+                                    return structParameterInfo.LayoutSize;
+                                }
+                                case ArrayParameterInfo arrayParameterInfo:
+                                    arrayParameterInfo.LayoutSize =
+                                        calcLayoutSize(parameterInfo.Type) * arrayParameterInfo.Length;
+                                    return arrayParameterInfo.LayoutSize;
+                            }
+
+                            return 1;
+                        }
+
+                        foreach (var (n, p) in subs)
+                        {
+                            switch (p)
+                            {
+                                case StructParameterInfo structParameterInfo:
+                                    structParameterInfo.LayoutSize = calcLayoutSize(p.Type);
+                                    break;
+                                case ArrayParameterInfo arrayParameterInfo:
+                                    arrayParameterInfo.LayoutSize = calcLayoutSize(p.Type) * arrayParameterInfo.Length;
+                                    break;
+                            }
                         }
                     }
                 }
@@ -595,9 +791,15 @@ namespace engenious.Content.Pipeline
         }
     }
 
+    /// <summary>
+    ///     Settings class to influence <see cref="EffectProcessor"/>.
+    /// </summary>
     [Serializable]
     public class EffectProcessorSettings : ProcessorSettings
     {
+        /// <summary>
+        ///     Gets or sets a value indicating whether to create source code for the effect.
+        /// </summary>
         [DefaultValue(true)] public bool CreateUserEffect { get; set; } = true;
     }
 }

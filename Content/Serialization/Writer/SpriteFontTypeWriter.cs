@@ -3,9 +3,13 @@ using engenious.Content.Pipeline;
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Content type writer to serialize engenious spritefont content.
+    /// </summary>
     [ContentTypeWriter]
     public class SpriteFontTypeWriter : ContentTypeWriter<CompiledSpriteFont>
     {
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, CompiledSpriteFont? value)
         {
             if (value == null)
@@ -40,9 +44,14 @@ namespace engenious.Content.Serialization
             }
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(SpriteFontTypeReader).FullName!;
 
-        public SpriteFontTypeWriter() : base(1)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="SpriteFontTypeWriter"/> class.
+        /// </summary>
+        public SpriteFontTypeWriter()
+            : base(1)
         {
         }
     }

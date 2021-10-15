@@ -4,11 +4,15 @@ using engenious.Content.Pipeline;
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Content type writer to serialize engenious effects content.
+    /// </summary>
     [ContentTypeWriter]
     public class EffectTypeWriter : ContentTypeWriter<EffectContent>
     {
         #region implemented abstract members of ContentTypeWriter
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, EffectContent? value)
         {
             if (value == null)
@@ -24,7 +28,7 @@ namespace engenious.Content.Serialization
                 writer.Write(technique.Name);
                 if (value.CreateUserEffect)
                 {
-                    writer.Write(technique.UserTechniqueName);
+                    writer.Write(technique.UserTechniqueName ?? string.Empty);
                 }
                 writer.Write(technique.Passes.Count);
                 foreach (var pass in technique.Passes)
@@ -51,11 +55,16 @@ namespace engenious.Content.Serialization
             }
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(EffectTypeReader).FullName!;
 
         #endregion
 
-        public EffectTypeWriter() : base(0)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="EffectTypeWriter"/> class.
+        /// </summary>
+        public EffectTypeWriter()
+            : base(0)
         {
         }
     }

@@ -2,20 +2,30 @@ using System.Drawing;
 
 namespace engenious.Pipeline.Helper
 {
+    /// <summary>
+    ///     Helper class to get dpi resolution.
+    /// </summary>
     public static class DpiHelper
     {
 
-        private static readonly Bitmap _dummyBitmap;
+        private static readonly Bitmap DummyBitmap;
         
-        private static readonly System.Drawing.Graphics _g;
+        private static readonly System.Drawing.Graphics G;
 
         static DpiHelper()
         {
-            _dummyBitmap = new Bitmap(1,1);
-            _g = System.Drawing.Graphics.FromImage(_dummyBitmap);
+            DummyBitmap = new Bitmap(1,1);
+            G = System.Drawing.Graphics.FromImage(DummyBitmap);
         }
 
-        public static float DpiX => _g.DpiX;
-        public static float DpiY => _g.DpiY;
+        /// <summary>
+        ///     Gets the graphics dpi resolution on the x axis.
+        /// </summary>
+        public static float DpiX => G.DpiX;
+
+        /// <summary>
+        ///     Gets the graphics dpi resolution on the y axis.
+        /// </summary>
+        public static float DpiY => G.DpiY;
     }
 }

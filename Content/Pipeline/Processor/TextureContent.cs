@@ -11,24 +11,53 @@ using OpenTK.Graphics.OpenGL;
 
 namespace engenious.Content.Pipeline
 {
+    /// <summary>
+    ///     Processed texture content to create texture content files.
+    /// </summary>
     public class TextureContent
     {
         private readonly GraphicsDevice _graphicsDevice;
         private int _texture;
 
-        public TextureContent(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, byte[] inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+        private TextureContent(GraphicsDevice graphicsDevice)
         {
             MipMaps = new List<TextureContentMipMap>();
             _graphicsDevice = graphicsDevice;
+        }
+
+        /// <summary>
+        ///     Initializes a ne instance of the <see cref="TextureContent"/> class.
+        /// </summary>
+        /// <param name="graphicsDevice">The graphics device used to load the texture and create mip maps with.</param>
+        /// <param name="generateMipMaps"></param>
+        /// <param name="mipMapCount">The number of mip maps to create.</param>
+        /// <param name="inputData">The bitmap input data.</param>
+        /// <param name="width">The width of the texture.</param>
+        /// <param name="height">The height of the texture.</param>
+        /// <param name="inputFormat">The input format of the texture.</param>
+        /// <param name="outputFormat">The format of the texture to use on GPU side.</param>
+        public TextureContent(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, byte[] inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+            : this(graphicsDevice)
+        {
             GCHandle handle = GCHandle.Alloc(inputData, GCHandleType.Pinned);
             CreateTexture(graphicsDevice, generateMipMaps, mipMapCount, handle.AddrOfPinnedObject(), width, height, inputFormat, outputFormat);
             handle.Free();
         }
 
+        /// <summary>
+        ///     Initializes a ne instance of the <see cref="TextureContent"/> class.
+        /// </summary>
+        /// <param name="graphicsDevice">The graphics device used to load the texture and create mip maps with.</param>
+        /// <param name="generateMipMaps"></param>
+        /// <param name="mipMapCount">The number of mip maps to create.</param>
+        /// <param name="inputData">A pointer to the bitmap input data.</param>
+        /// <param name="width">The width of the texture.</param>
+        /// <param name="height">The height of the texture.</param>
+        /// <param name="inputFormat">The input format of the texture.</param>
+        /// <param name="outputFormat">The format of the texture to use on GPU side.</param>
         public TextureContent(GraphicsDevice graphicsDevice,bool generateMipMaps, int mipMapCount, IntPtr inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+            : this(graphicsDevice)
         {
-            MipMaps = new List<TextureContentMipMap>();
-            _graphicsDevice = graphicsDevice;
             CreateTexture(graphicsDevice, generateMipMaps, mipMapCount, inputData, width, height, inputFormat, outputFormat);
         }
 
@@ -124,28 +153,66 @@ namespace engenious.Content.Pipeline
             if (!GenerateMipMaps)
                 MipMapCount = realCount;
         }
-        public int Width{get;private set;}
-        public int Height{get;private set;}
+
+        /// <summary>
+        ///     Gets a value indicating the width of the texture.
+        /// </summary>
+        public int Width { get; private set; }
+
+        /// <summary>
+        ///     Gets a value indicating the height of the texture.
+        /// </summary>
+        public int Height { get; private set; }
+
+        /// <summary>
+        ///     Gets a value indicating the format of the texture content.
+        /// </summary>
         public TextureContentFormat Format{ get; private set; }
 
+        /// <summary>
+        ///     Gets a value indicating whether mip maps should be generated on load.
+        /// </summary>
         public bool GenerateMipMaps { get; } = false;
 
-        public int MipMapCount{ get; private set; }=1;
+        /// <summary>
+        ///     Gets a value indicating the number of mip maps.
+        /// </summary>
+        public int MipMapCount { get; private set; } = 1;
 
-        public List<TextureContentMipMap> MipMaps{ get; }
+        /// <summary>
+        ///     Gets a collection of all the mip map levels.
+        /// </summary>
+        public List<TextureContentMipMap> MipMaps { get; }
     }
 
+    /// <summary>
+    ///     Processed mip map level class for <see cref="TextureContent"/> mip maps.
+    /// </summary>
     public class TextureContentMipMap
     {
         private readonly Bitmap? _bitmap;
         private readonly byte[]? _data;
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="TextureContentMipMap"/> instance.
+        /// </summary>
+        /// <param name="width">The width of the mip map level.</param>
+        /// <param name="height">The height of the mip map level.</param>
+        /// <param name="format">The format of the mip map level.</param>
+        /// <param name="data">The pixel data of the mip map level.</param>
         public TextureContentMipMap(int width, int height, TextureContentFormat format, byte[] data)
             : this(width, height, format)
         {
             _data = data;
         }
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="TextureContentMipMap"/> instance.
+        /// </summary>
+        /// <param name="width">The width of the mip map level.</param>
+        /// <param name="height">The height of the mip map level.</param>
+        /// <param name="format">The format of the mip map level.</param>
+        /// <param name="data">The bitmap data of the mip map level.</param>
         public TextureContentMipMap(int width, int height, TextureContentFormat format, Bitmap data)
             : this(width, height, format)
         {
@@ -153,6 +220,12 @@ namespace engenious.Content.Pipeline
             _bitmap = data;
         }
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="TextureContentMipMap"/> instance.
+        /// </summary>
+        /// <param name="width">The width of the mip map level.</param>
+        /// <param name="height">The height of the mip map level.</param>
+        /// <param name="format">The format of the mip map level.</param>
         protected TextureContentMipMap(int width, int height, TextureContentFormat format)
         {
             Width = width;
@@ -160,12 +233,26 @@ namespace engenious.Content.Pipeline
             Format = format;
         }
 
+        /// <summary>
+        ///     Gets the width of this mip map level.
+        /// </summary>
         public int Width{ get; }
 
+        /// <summary>
+        ///     Gets the height of this mip map level.
+        /// </summary>
         public int Height{ get; }
 
+        /// <summary>
+        ///     Gets a value indicating the format of the texture content.
+        /// </summary>
         public TextureContentFormat Format{ get; }
 
+        /// <summary>
+        ///     Writes this mip map level to a <see cref="ContentWriter"/>.
+        /// </summary>
+        /// <param name="writer">The <see cref="ContentWriter"/> to write to.</param>
+        /// <exception cref="InvalidOperationException"></exception>
         public void Save(ContentWriter writer)
         {
             writer.Write(Width);

@@ -4,6 +4,9 @@ using engenious.Graphics;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Processor to apply additional post processing to eengenious model content files.
+    /// </summary>
     [ContentProcessor(DisplayName = "Ego Model Processor")]
     public class EgoModelProcessor : ContentProcessor<ModelContent, ModelContent>
     {
@@ -13,6 +16,8 @@ namespace engenious.Pipeline
                 c.Frames.RemoveAt(index);//letzter frame entfernen...
         }
         #region implemented abstract members of ContentProcessor
+
+        /// <inheritdoc />
         public override ModelContent Process(ModelContent input, string filename, ContentProcessorContext context)
         {
 

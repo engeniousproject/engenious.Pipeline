@@ -10,11 +10,14 @@ using Microsoft.Win32;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Font config implementation for windows.
+    /// </summary>
     public class FontConfigWindows : FontConfig
 	{
         private readonly Dictionary<string,string> _fontFileMap = new Dictionary<string, string>();
 
-        private static bool FindFondFile(ref string fileName)
+        private static bool FindFontFile(ref string fileName)
         {
             if (Path.GetExtension(fileName) != ".ttf") return false;
             if (File.Exists(fileName))
@@ -27,7 +30,9 @@ namespace engenious.Pipeline
             }
             return File.Exists(fileName);
         }
-		public FontConfigWindows()
+
+        /// <inheritdoc />
+        public FontConfigWindows()
 		{
 #pragma warning disable CA1416
 		    var machineFontKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
@@ -53,7 +58,7 @@ namespace engenious.Pipeline
             foreach (var (fontName, fileName) in combined)
 		    {
                 string file = fileName;
-		        if (FindFondFile(ref file))
+		        if (FindFontFile(ref file))
 		        {
 		            string name = fontName;
 		            if (name.EndsWith(" (TrueType)"))
@@ -65,8 +70,8 @@ namespace engenious.Pipeline
 		}
 
         #region implemented abstract members of FontConfig
-       
 
+        /// <inheritdoc />
         public override bool GetFontFile(string fontName, int fontSize, FontStyle style, out string? fileName)
         {
             fileName = null;

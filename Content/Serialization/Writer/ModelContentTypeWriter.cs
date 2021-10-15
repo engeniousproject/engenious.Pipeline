@@ -3,9 +3,13 @@ using engenious.Graphics;
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Content type writer to serialize engenious model content.
+    /// </summary>
     [ContentTypeWriter]
     public class ModelContentTypeWriter : ContentTypeWriter<ModelContent>
     {
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(ModelTypeReader).FullName!;
 
         private static void WriteTree(ContentWriter writer, ModelContent value, NodeContent node)
@@ -17,6 +21,7 @@ namespace engenious.Content.Serialization
                 WriteTree(writer, value, c);
         }
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, ModelContent? value)
         {
             if (value == null)
@@ -83,7 +88,11 @@ namespace engenious.Content.Serialization
             }
         }
 
-        public ModelContentTypeWriter() : base(0)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="ModelContentTypeWriter"/> class.
+        /// </summary>
+        public ModelContentTypeWriter()
+            : base(0)
         {
         }
     }
