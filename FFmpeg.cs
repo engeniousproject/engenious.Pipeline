@@ -8,15 +8,39 @@ using engenious.Helper;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Wrapper class for the ffmpeg command line utility.
+    /// </summary>
     public class FFmpeg
     {
         private string _ffmpegExe;
         private readonly SynchronizationContext _syncContext;
+        
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="FFmpeg"/> class.
+        /// </summary>
+        /// <param name="syncContext">
+        ///     The synchronization context used for UI. To be able to select ffmpeg executable with an open file dialog.
+        /// </param>
+        /// <param name="exePath">The path to the ffmpeg executable.</param>
+        public FFmpeg(SynchronizationContext syncContext,string exePath)
+        {
+            _syncContext = syncContext;
+            _ffmpegExe = exePath;
+        }
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="FFmpeg"/> class.
+        /// </summary>
+        /// <param name="syncContext">
+        ///     The synchronization context used for UI. To be able to select ffmpeg executable with an open file dialog.
+        /// </param>
         public FFmpeg(SynchronizationContext syncContext)
             : this(syncContext,LocateFFmpegExe())
         {
 
         }
+        
         private static string LocateFFmpegExe()
         {
             string completePath;
@@ -65,11 +89,14 @@ namespace engenious.Pipeline
             }
             return "ffmpeg" + ext;
         }
-        public FFmpeg(SynchronizationContext syncContext,string exePath)
-        {
-            _syncContext = syncContext;
-            _ffmpegExe = exePath;
-        }
+
+        /// <summary>
+        ///     Run the ffmpeg command with arguments.
+        /// </summary>
+        /// <param name="arguments">The arguments to pass to the ffmpeg command.</param>
+        /// <param name="throwAll">Whether to throw all exceptions or not.</param>
+        /// <returns>The started ffmpeg process.</returns>
+        /// <exception cref="FileNotFoundException">Thrown when ffmpeg was not found.</exception>
         public Process RunCommand(string arguments, bool throwAll = false)
         {
             Process p = new();

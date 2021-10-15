@@ -3,10 +3,13 @@ using System.IO;
 using System.Text;
 
 namespace engenious.Content.Pipeline
-{
+{    /// <summary>
+    ///     Deprecated <see cref="ContentImporter{T}"/> used to import <see cref="FontContent"/> files from(.fnt).
+    /// </summary>
     [ContentImporter(".fnt", DisplayName = "FontImporter", DefaultProcessor = "FontProcessor")]
     public class FontImporter : ContentImporter<FontContent>
     {
+        /// <inheritdoc />
         public override FontContent? Import(string filename, ContentImporterContext context)
         {
             try
@@ -38,8 +41,17 @@ namespace engenious.Content.Pipeline
         }
     }
 
+    /// <summary>
+    ///     Class for content of processing fnt files to content files.
+    /// </summary>
     public class FontContent
     {
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="FontContent"/> class.
+        /// </summary>
+        /// <param name="fileName">The filename of the character region mappings of the font.</param>
+        /// <param name="textFile">The filename of the bitmap texture of the font.</param>
+        /// <param name="content">The content of the loaded <paramref name="fileName"/>.</param>
         public FontContent(string fileName, string textFile, string content)
         {
             FileName = fileName;
@@ -47,10 +59,19 @@ namespace engenious.Content.Pipeline
             Content = content;
         }
 
-        public string FileName { get; set; }
+        /// <summary>
+        ///     Gets the filename of the character region mappings of the font.
+        /// </summary>
+        public string FileName { get; }
 
-        public string TextureFile { get; set; }
+        /// <summary>
+        ///     Gets the filename of the bitmap texture of the font.
+        /// </summary>
+        public string TextureFile { get; }
 
-        public string Content { get; set; }
+        /// <summary>
+        ///     Gets the content of the loaded <see cref="FileName"/>.
+        /// </summary>
+        public string Content { get; }
     }
 }

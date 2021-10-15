@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Font config implementation for linux.
+    /// </summary>
     public class FontConfigLinux : FontConfigUnix
     {
         [DllImport("libfontconfig.so.1",EntryPoint="FcInitLoadConfigAndFonts")]
@@ -22,6 +25,7 @@ namespace engenious.Pipeline
         [DllImport("libfontconfig.so.1",EntryPoint="FcPatternGetString")]
         private static extern FcResult FcPatternGetString_Base(IntPtr pattern, string name, int n, out IntPtr resultString);
 
+        /// <inheritdoc />
         public FontConfigLinux()
             : base(FcInitLoadConfigAndFonts_Base, FcPatternCreate_Base, FcNameParse_Base, FcConfigSubstitute_Base,
                 FcDefaultSubstitute_Base, FcFontMatch_Base, FcPatternDestroy_Base, FcPatternGetString_Base)

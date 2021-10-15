@@ -5,16 +5,25 @@ using System.Linq;
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Manager class for engenious content serialization.
+    /// </summary>
     public class SerializationManager
     {
         private static SerializationManager? _instance;
 
+        /// <summary>
+        ///     Gets the singleton instance of the <see cref="SerializationManager"/>.
+        /// </summary>
         public static SerializationManager Instance => _instance ??= new SerializationManager();
 
 
         //private Dictionary<string ,IContentTypeReader> typeReaders;
         private readonly Dictionary<string ,IContentTypeWriter> _typeWriters;
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="SerializationManager"/> class.
+        /// </summary>
         protected SerializationManager()
         {
             //typeReaders = new Dictionary<string, IContentTypeReader> ();
@@ -22,6 +31,10 @@ namespace engenious.Content.Serialization
             AddAssembly(Assembly.GetExecutingAssembly());
         }
 
+        /// <summary>
+        ///     Adds an assemblies <see cref="IContentTypeWriter"/> implementations to the available serialization options.
+        /// </summary>
+        /// <param name="assembly">The assembly to search through.</param>
         public void AddAssembly(Assembly assembly)
         {
             foreach (Type t in assembly.GetTypes())
@@ -47,6 +60,11 @@ namespace engenious.Content.Serialization
 			return res;
 		}*/
 
+        /// <summary>
+        ///     Gets a matching <see cref="IContentTypeWriter"/> that can serialize a given type.
+        /// </summary>
+        /// <param name="writerType">The type to search a suitable <see cref="IContentTypeWriter"/> for.</param>
+        /// <returns>The matching <see cref="IContentTypeWriter"/>.</returns>
         public IContentTypeWriter? GetWriter(Type writerType)
         {
             return writerType.FullName != null && _typeWriters.TryGetValue(writerType.FullName, out var res) ? res : null;

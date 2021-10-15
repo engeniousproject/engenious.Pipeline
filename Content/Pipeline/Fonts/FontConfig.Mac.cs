@@ -3,7 +3,10 @@ using System.Runtime.InteropServices;
 
 namespace engenious.Pipeline
 {
-    public class FontConfigMac:FontConfigUnix
+    /// <summary>
+    ///     Font config implementation for mac.
+    /// </summary>
+    public class FontConfigMac : FontConfigUnix
     {
         [DllImport("libfontconfig.1.dylib",EntryPoint="FcInitLoadConfigAndFonts")]
         private static extern IntPtr FcInitLoadConfigAndFonts_Base();
@@ -22,6 +25,7 @@ namespace engenious.Pipeline
         [DllImport("libfontconfig.1.dylib",EntryPoint="FcPatternGetString")]
         private static extern FcResult FcPatternGetString_Base(IntPtr pattern, string name, int n, out IntPtr resultString);
 
+        /// <inheritdoc />
         public FontConfigMac()
             : base(FcInitLoadConfigAndFonts_Base, FcPatternCreate_Base, FcNameParse_Base, FcConfigSubstitute_Base,
                 FcDefaultSubstitute_Base, FcFontMatch_Base, FcPatternDestroy_Base, FcPatternGetString_Base)

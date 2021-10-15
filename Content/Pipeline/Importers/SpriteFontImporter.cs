@@ -9,11 +9,15 @@ using engenious.Graphics;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     <see cref="ContentImporter{T}"/> used to import <see cref="SpriteFontContent"/> files from(.spritefont).
+    /// </summary>
     [ContentImporter(".spritefont", DisplayName = "SpriteFontImporter", DefaultProcessor = "SpriteFontProcessor")]
     public class SpriteFontImporter : ContentImporter<SpriteFontContent>
     {
         #region implemented abstract members of ContentImporter
 
+        /// <inheritdoc />
         public override SpriteFontContent Import(string filename, ContentImporterContext context)
         {
             return new(filename);
@@ -22,8 +26,16 @@ namespace engenious.Pipeline
         #endregion
     }
 
+    /// <summary>
+    ///     Sprite font content for engenious font content files.
+    /// </summary>
     public class SpriteFontContent
     {
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="SpriteFontContent"/> class.
+        /// </summary>
+        /// <param name="fileName">The filename of the spritefont xml file.</param>
+        /// <exception cref="FormatException">Thrown when the spritefont xml was badly formatted.</exception>
         public SpriteFontContent(string fileName)
         {
             CharacterRegions = new List<CharacterRegion>();
@@ -76,6 +88,10 @@ namespace engenious.Pipeline
             }
         }
 
+        /// <summary>
+        ///     Save the spritefont file to a file.
+        /// </summary>
+        /// <param name="fileName">The file to save to.</param>
         public void Save(string fileName)
         {
             using var xml = new XmlTextWriter(fileName, Encoding.UTF8);
@@ -183,23 +199,51 @@ namespace engenious.Pipeline
         }
 
 
+        /// <summary>
+        ///     Gets or sets the name of the font.
+        /// </summary>
         public string? FontName { get; set; }
         
+        /// <summary>
+        ///     Gets or sets a value indicating the type of the font.
+        /// </summary>
         public SpriteFontType FontType { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating the size of the font.
+        /// </summary>
         public int Size { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating the spacing between characters.
+        /// </summary>
         public int Spacing { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating whether kerning between characters should be used.
+        /// </summary>
         public bool UseKerning { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating the style of the font.
+        /// </summary>
         public FontStyle Style { get; set; }
 
-        public char? DefaultCharacter { get; set; }
+        /// <summary>
+        ///     Gets the default character to fall back to for characters that are not available.
+        /// </summary>
+        /// <remarks><c>null</c> defaults to '*'</remarks> TODO: change on global default
+        public char? DefaultCharacter { get; }
 
-        public List<CharacterRegion> CharacterRegions { get; set; }
+        /// <summary>
+        ///     Gets a list of the character regions this font contains.
+        /// </summary>
+        public List<CharacterRegion> CharacterRegions { get; }
     }
 
+    /// <summary>
+    ///     Represents a region of characters for fonts.
+    /// </summary>
     public class CharacterRegion : IEquatable<CharacterRegion>
     {
         private static int ParseAddress(string characterAddress)
@@ -216,13 +260,25 @@ namespace engenious.Pipeline
             return value[0];
         }
 
-        private char _defaultChar;
+        private readonly char _defaultChar;
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="CharacterRegion"/> class.
+        /// </summary>
+        /// <param name="start">The first character the range of characters starts at.</param>
+        /// <param name="end">The end character the range of characters ends at(inclusive).</param>
+        /// <param name="defaultChar">The default character to use if a specific character is not available.</param>
         public CharacterRegion(string start, string end, char defaultChar = '*')
             : this(ParseAddress(start), ParseAddress(end), defaultChar)
         {
         }
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="CharacterRegion"/> class.
+        /// </summary>
+        /// <param name="start">The first character the range of characters starts at.</param>
+        /// <param name="end">The end character the range of characters ends at(inclusive).</param>
+        /// <param name="defaultChar">The default character to use if a specific character is not available.</param>
         public CharacterRegion(int start, int end, char defaultChar = '*')
         {
             Start = start;
@@ -230,7 +286,11 @@ namespace engenious.Pipeline
             _defaultChar = defaultChar;
         }
 
-        public IEnumerable<char> GetChararcters()
+        /// <summary>
+        ///     Gets an enumeration of all the characters in the character range.
+        /// </summary>
+        /// <returns>The enumeration of the characters in the range.</returns>
+        public IEnumerable<char> GetCharacters()
         {
             for (int i = Start; i <= End; i++)
             {
@@ -247,11 +307,17 @@ namespace engenious.Pipeline
 
             xml.WriteEndElement();
         }
-
+        /// <summary>
+        ///     Gets the first character the range of characters starts at.
+        /// </summary>
         public int Start { get; }
 
+        /// <summary>
+        ///     Gets the end character the range of characters ends at(inclusive).
+        /// </summary>
         public int End { get; }
 
+        /// <inheritdoc />
         public bool Equals(CharacterRegion? other)
         {
             if (ReferenceEquals(null, other)) return false;
@@ -259,14 +325,15 @@ namespace engenious.Pipeline
             return _defaultChar == other._defaultChar && Start == other.Start && End == other.End;
         }
 
+        /// <inheritdoc />
         public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != GetType()) return false;
-            return Equals((CharacterRegion) obj);
+            return obj.GetType() == GetType() && Equals((CharacterRegion) obj);
         }
 
+        /// <inheritdoc />
         public override int GetHashCode()
         {
             unchecked

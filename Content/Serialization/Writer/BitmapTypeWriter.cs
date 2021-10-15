@@ -6,11 +6,15 @@ using System.Runtime.InteropServices;
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Content type writer to serialize engenious bitmap content.
+    /// </summary>
     [ContentTypeWriter]
     public class BitmapTypeWriter : ContentTypeWriter<Bitmap>
     {
         private readonly bool _usePng = true;
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, Bitmap? bmp)
         {
             if (bmp == null)
@@ -41,8 +45,12 @@ namespace engenious.Content.Serialization
             }
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(Texture2DTypeReader).FullName!;
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="BitmapTypeWriter"/> class.
+        /// </summary>
         public BitmapTypeWriter()
             : base(0)
         {

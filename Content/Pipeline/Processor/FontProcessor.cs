@@ -7,8 +7,14 @@ using engenious.Graphics;
 
 namespace engenious.Content.Pipeline
 {
+    /// <summary>
+    ///     Class containing a completely processed sprite content file.
+    /// </summary>
     public class CompiledSpriteFont
     {
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="CompiledSpriteFont"/> class.
+        /// </summary>
         public CompiledSpriteFont()
         {
             Kernings = new Dictionary<int, float>();
@@ -22,27 +28,45 @@ namespace engenious.Content.Pipeline
         internal TextureContent Texture;
         internal SpriteFontType FontType;
 
+        /// <summary>
+        ///     Gets or sets the default character of the sprite font.
+        /// </summary>
+        /// <remarks><c>null</c> to use no default character.</remarks>
         public char? DefaultCharacter { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating the vertical spacing between lines.
+        /// </summary>
         public float LineSpacing { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating the horizontal spacing between characters.
+        /// </summary>
         public float Spacing { get; set; }
 
+        /// <summary>
+        ///     Gets or sets a value indicating the base line position within the font.
+        /// </summary>
         public float BaseLine { get; set; }
     }
 
+    /// <summary>
+    ///     Processor for processing fnt files to sprite font content files.
+    /// </summary>
     [ContentProcessor(DisplayName = "Font Processor")]
     public class FontProcessor : ContentProcessor<FontContent, CompiledSpriteFont>
     {
+        /// <inheritdoc />
         public override CompiledSpriteFont? Process(FontContent input,string filename, ContentProcessorContext context)
         {
+            var game = (IGame)context.Game;
             try
             {
                 CompiledSpriteFont font = new();
                 font.FontType = SpriteFontType.BitmapFont;
                 var text = new Bitmap(input.TextureFile);
                 var textData = text.LockBits(new System.Drawing.Rectangle(0,0,text.Width,text.Height),ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                font.Texture = new TextureContent(context.GraphicsDevice,false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+                font.Texture = new TextureContent(game.GraphicsDevice,false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
                 text.UnlockBits(textData);  
                 text.Dispose();
 

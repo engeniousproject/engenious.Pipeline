@@ -6,18 +6,22 @@ using engenious.Content.Pipeline;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Processor that processes audio files to engenious audio content files.
+    /// </summary>
     [ContentProcessor(DisplayName = "Audio Processor")]
-    public class AudioProcessor : ContentProcessor<FFmpegContent,AudioContent,AudioProcessorSettings>
+    public class AudioProcessor : ContentProcessor<FFmpegContent, AudioContent, AudioProcessorSettings>
     {
         #region implemented abstract members of ContentProcessor
 
+        /// <inheritdoc />
         public override AudioContent? Process(FFmpegContent input, string filename, ContentProcessorContext context)
         {
             try
             {
                 var ff = new FFmpeg(context.SyncContext);
                 string args = string.Empty;
-                switch (settings.OutputFormat)
+                switch (_settings.OutputFormat)
                 {
                     case SoundEffect.AudioFormat.Ogg:
                         args = "-acodec libvorbis -ab 128k -ar 44100 -f ogg";
@@ -33,7 +37,7 @@ namespace engenious.Pipeline
                 //     context.RaiseBuildMessage(filename, "error: ffmpeg: could not read from stdout", BuildMessageEventArgs.BuildMessageType.Error);
                 //     return null;
                 // }
-                var output = new AudioContent(settings.OutputFormat, outputStream);
+                var output = new AudioContent(_settings.OutputFormat, outputStream, false);
                 process.WaitForExit();
                 var err = process.StandardError.ReadToEnd();//TODO: error handling
                 if (!string.IsNullOrEmpty(err))
@@ -50,9 +54,15 @@ namespace engenious.Pipeline
 
         #endregion
     }
+    /// <summary>
+    ///     <see cref="AudioProcessor"/> specific settings.
+    /// </summary>
     [Serializable]
     public class AudioProcessorSettings : ProcessorSettings
     {
+        /// <summary>
+        ///     Gets or sets a value indicating the audio content file output format to use for content files.
+        /// </summary>
         [Category("Settings")]
         [DefaultValue(SoundEffect.AudioFormat.Ogg)]
         public SoundEffect.AudioFormat OutputFormat { get; set; }

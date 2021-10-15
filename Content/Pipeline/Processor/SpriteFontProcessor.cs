@@ -21,6 +21,9 @@ using SharpFont.Cache;
 
 namespace engenious.Pipeline
 {
+    /// <summary>
+    ///     Processor for spritefont content files.
+    /// </summary>
     [ContentProcessor(DisplayName = "Font Processor")]
     public class SpriteFontProcessor : ContentProcessor<SpriteFontContent, CompiledSpriteFont>
     {
@@ -97,8 +100,11 @@ namespace engenious.Pipeline
         }
         
         #region implemented abstract members of ContentProcessor
+
+        /// <inheritdoc />
         public override CompiledSpriteFont? Process(SpriteFontContent input, string filename, ContentProcessorContext context)
         {
+            var game = (IGame)context.Game;
             if (input.FontName == null)
                 throw new ArgumentException("SpriteFontContent did not have a valid FontName", nameof(input));
             if (!FontConfig.Instance.GetFontFile(input.FontName, input.Size, input.Style, out var fontFile))
@@ -146,7 +152,7 @@ namespace engenious.Pipeline
             var glyphs = new Dictionary<uint, GlyphSlot>();
 
             var characters = input.CharacterRegions.SelectMany(
-                r => r.GetChararcters().Select(c => (characterRange: c, glyphIndex: face.GetCharIndex(c)))).Where(x=>x.glyphIndex != 0).ToList();
+                r => r.GetCharacters().Select(c => (characterRange: c, glyphIndex: face.GetCharIndex(c)))).Where(x=>x.glyphIndex != 0).ToList();
 
             var bitmaps = new List<(char character, BitmapData? bmpData, float advance, GlyphMetrics metrics)>();
 
@@ -252,7 +258,7 @@ namespace engenious.Pipeline
                 offsetX += width + spacingX;
                 bmp.Cleanup();
             }
-            compiled.Texture = new TextureContent(context.GraphicsDevice,false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+            compiled.Texture = new TextureContent(game.GraphicsDevice,false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
             compiled.Spacing = input.Spacing;
             compiled.DefaultCharacter = input.DefaultCharacter;
             
@@ -282,7 +288,11 @@ namespace engenious.Pipeline
         private static IntPtr GetReference(Face face)
         {
             var propInfo = typeof(Face).GetProperty("Reference", BindingFlags.Instance | BindingFlags.NonPublic);
-            return (IntPtr)propInfo.GetValue(face);
+            if (propInfo == null)
+                throw new InvalidOperationException("SharpFont Face type should contain the non public \"Reference\" property.");
+            return (IntPtr)(propInfo.GetValue(face) ??
+                            throw new InvalidOperationException(
+                                "SharpFont Face.Reference property should never return null."));
         }
 
         private static Vector2 AutoFrame(Msdf msdf, int pxRange, double destX, double destY)
@@ -352,7 +362,7 @@ namespace engenious.Pipeline
                 SpriteFontType.MTSDF => MsdfMode.MultiAndTrue,
                 _ => throw new ArgumentException("Invalid SDF font type", nameof(fontType))
             };
-            const int inchToPoint = 72;
+            //const int inchToPoint = 72;
             //maxWidth = (int)MathF.Ceiling((float)glyph.Metrics.Width * DpiHelper.DpiX / inchToPoint);
             //maxHeight = (int)MathF.Ceiling((float)glyph.Metrics.Height * DpiHelper.DpiY / inchToPoint);
             var width = (int)MathF.Ceiling((float)glyph.Metrics.Width / SDF_PRESCALE);

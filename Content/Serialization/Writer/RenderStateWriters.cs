@@ -2,11 +2,15 @@
 
 namespace engenious.Content.Serialization
 {
+    /// <summary>
+    ///     Content type writer to serialize engenious rasterizer states.
+    /// </summary>
     [ContentTypeWriter]
     public class RasterizerStateTypeWriter  : ContentTypeWriter<RasterizerState>
     {
         #region implemented abstract members of ContentTypeWriter
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, RasterizerState? value)
         {
             if (value == null)
@@ -25,20 +29,29 @@ namespace engenious.Content.Serialization
             writer.Write(value.SlopeScaleDepthBias);
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(RasterizerStateTypeReader).FullName!;
 
         #endregion
 
-        public RasterizerStateTypeWriter() : base(0)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="RasterizerStateTypeWriter"/> class.
+        /// </summary>
+        public RasterizerStateTypeWriter()
+            : base(0)
         {
         }
     }
 
+    /// <summary>
+    ///     Content type writer to serialize engenious depth stencil states.
+    /// </summary>
     [ContentTypeWriter]
     public class DepthStencilStateTypeWriter : ContentTypeWriter<DepthStencilState>
     {
         #region implemented abstract members of ContentTypeWriter
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, DepthStencilState? value)
         {
             if (value == null)
@@ -67,20 +80,29 @@ namespace engenious.Content.Serialization
             writer.Write((ushort)value.CounterClockwiseStencilPass);
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(DepthStencilStateTypeReader).FullName!;
 
         #endregion
 
-        public DepthStencilStateTypeWriter() : base(0)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="DepthStencilStateTypeWriter"/> class.
+        /// </summary>
+        public DepthStencilStateTypeWriter()
+            : base(0)
         {
         }
     }
 
+    /// <summary>
+    ///     Content type writer to serialize engenious blend states.
+    /// </summary>
     [ContentTypeWriter]
     public class BlendStateTypeWriter  : ContentTypeWriter<BlendState>
     {
         #region implemented abstract members of ContentTypeWriter
 
+        /// <inheritdoc />
         public override void Write(ContentWriter writer, BlendState? value)
         {
             if (value == null)
@@ -103,11 +125,16 @@ namespace engenious.Content.Serialization
             writer.Write((byte)value.ColorWriteChannels3);
         }
 
+        /// <inheritdoc />
         public override string RuntimeReaderName => typeof(BlendStateTypeReader).FullName!;
 
         #endregion
 
-        public BlendStateTypeWriter() : base(0)
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="BlendStateTypeWriter"/> class.
+        /// </summary>
+        public BlendStateTypeWriter()
+            : base(0)
         {
         }
     }
