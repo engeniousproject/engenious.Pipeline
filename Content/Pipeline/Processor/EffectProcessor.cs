@@ -98,7 +98,7 @@ namespace engenious.Content.Pipeline
             var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
             var typeDefinition = new TypeDefinition(typeNamespace, TypeModifiers.Class | TypeModifiers.Public, name,
                 new[] { baseType });
-
+            createdTypeContainer.FileDefinition.Types.Remove(typeDefinition.FullName);
             createdTypeContainer.FileDefinition.Types.Add(typeDefinition.FullName, typeDefinition);
             var ctor = new ConstructorDefinition(typeDefinition, MethodModifiers.Public,
                 new[] { new ParameterDefinition(graphicsDeviceType, "graphicsDevice") },
@@ -118,7 +118,7 @@ namespace engenious.Content.Pipeline
             expressionBuilder.Append("var techniques = Techniques;");
             foreach (var technique in input.Techniques)
             {
-                var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique);
+                var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique, createdTypeContainer);
                 var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, techniqueType, technique.Name,
                     setterModifiers: MethodModifiers.Private);
 
@@ -145,7 +145,8 @@ namespace engenious.Content.Pipeline
             public ParameterInfo ParameterInfo;
         }
 
-        private TypeDefinition GenerateEffectTechniqueSource(TypeDefinition parent, EffectTechnique technique)
+        private TypeDefinition GenerateEffectTechniqueSource(TypeDefinition parent, EffectTechnique technique,
+            CreatedContentCode.CreatedTypeContainer createdTypeContainer)
         {
             technique.UserTechniqueName = $"{technique.Name}Impl";
 
@@ -177,7 +178,7 @@ namespace engenious.Content.Pipeline
 
             foreach (var pass in technique.Passes)
             {
-                var passType = GenerateEffectPassSource(typeDefinition, pass);
+                var passType = GenerateEffectPassSource(typeDefinition, pass, createdTypeContainer);
                 if (passType == null)
                 {
                     throw new Exception($"Unable to create IL code for {pass.Name} EffectPass");
@@ -427,7 +428,8 @@ namespace engenious.Content.Pipeline
             return null;
         }
 
-        private TypeDefinition? GenerateEffectPassSource(TypeDefinition parent, EffectPass pass)
+        private TypeDefinition? GenerateEffectPassSource(TypeDefinition parent, EffectPass pass,
+            CreatedContentCode.CreatedTypeContainer createdTypeContainer)
         {
             var baseType = new TypeReference("engenious.Graphics", "EffectPass");
             var effectPassParameterCollectionType =
@@ -447,7 +449,7 @@ namespace engenious.Content.Pipeline
                     new ParameterDefinition(graphicsDeviceType, "graphicsDevice"),
                     new ParameterDefinition(TypeSystem.String, "name")
                 },
-                MethodBodyDefinition.EmptyBody,
+                new MethodBodyDefinition(new BlockExpressionDefinition(new MultilineExpressionDefinition())),
                 new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(graphicsDevice, name)") });
 
             typeDefinition.Methods.Add(ctor);
@@ -579,9 +581,157 @@ namespace engenious.Content.Pipeline
                                     };
             typeDefinition.Methods.Add(cacheParametersMethod);
 
+            GenerateMaterials(typeDefinition, pass, createdTypeContainer);
+
             return typeDefinition;
         }
+        private void GenerateMaterials(TypeDefinition effectPassType, EffectPass pass,
+            CreatedContentCode.CreatedTypeContainer createdTypeContainer)
+        {
+            // Preprocess: Find matching effect parameters
+            foreach (var m in pass.Materials)
+            {
+                foreach (var (parameterName, (propName, _)) in m.Bindings)
+                {
+                    var param = pass.Parameters.FirstOrDefault(x => x.Name == parameterName)
+                                ?? throw new Exception(
+                                    $"No matching parameter for material binding of material {m.Name}");
 
+                    m.Bindings[parameterName] = (propName, param);
+                }
+            }
+            foreach (var m in pass.Materials)
+            {
+                // TODO: find same materials
+                // int materialType = 0; // 1 UBO, 2 uniform 3 -> mixed
+                //
+                // int paramHash = 0;
+                // foreach (var (parameterName, propName) in m.Bindings)
+                // {
+                //     var param = pass.Parameters.FirstOrDefault(x => x.Name == parameterName)
+                //                 ?? throw new Exception($"No matching parameter for material binding of material {m.Name}");
+                //     if (param.Type.FullName == null)
+                //         continue;
+                //     int paramType = 2;// TODO UBO -> 1
+                //     if (materialType == 0)
+                //     {
+                //         materialType = paramType;
+                //     }
+                //     else if (materialType != paramType)
+                //     {
+                //         materialType = 3;
+                //         //throw new NotSupportedException("Mixed material using uniforms and buffers not supported");
+                //     }
+                //
+                //     paramHash = (paramHash * paramType) ^ param.Type.FullName.GetHashCode();
+                // }
+
+                CreateMaterial(effectPassType, pass, m, createdTypeContainer);
+            }
+        }
+        private void CreateMaterial(TypeDefinition effectPassType, EffectPass pass, EffectMaterial material,
+            CreatedContentCode.CreatedTypeContainer createdTypeContainer)
+        {
+
+                
+            var typeDef = new TypeDefinition("engenious.Graphics.UserDefined.Materials", TypeModifiers.Class | TypeModifiers.Sealed | TypeModifiers.Public, material.Name, new TypeReference[1]);
+
+            createdTypeContainer.FileDefinition.Types.Remove(typeDef.FullName);
+            
+            createdTypeContainer.FileDefinition.Types.Add(typeDef.FullName, typeDef);
+            var baseType = new TypeReference("engenious.Graphics", $"Material<{typeDef.FullName}>");
+            typeDef.BaseTypes![0] = baseType;
+            var dirtyField = new FieldDefinition(GenericModifiers.Private, TypeSystem.Boolean, "_dirty");
+            typeDef.Fields.Add(dirtyField);
+
+
+            {
+                const string paramName = "materialName";
+                var ctor = new ConstructorDefinition(typeDef, MethodModifiers.Public,
+                    new[] { new ParameterDefinition(TypeSystem.String, paramName) }, MethodBodyDefinition.EmptyBody,
+                    new CodeExpressionDefinition[] { $"base({paramName})" });
+                
+                typeDef.Methods.Add(ctor);
+            }
+            
+            foreach (var (parameterName, (propName, paramInfo)) in material.Bindings)
+            {
+                if (paramInfo == null)
+                    continue;
+                var fieldProp = new FieldDefinition(GenericModifiers.Private, paramInfo.Type, $"_{propName}");
+
+                var setter = new ImplementedPropertyMethodDefinition(
+                    new MethodBodyDefinition(new BlockExpressionDefinition(
+                        new MultilineExpressionDefinition(new CodeExpressionDefinition[]
+                                                          { $"{dirtyField.Name} = true;", $"{fieldProp.Name} = value;" }))), true);
+
+                
+                var matProp = new PropertyDefinition(MethodModifiers.Public, paramInfo.Type, propName, 
+                    new ImplementedPropertyMethodDefinition(new MethodBodyDefinition($"{fieldProp.Name}"), false),
+                    setter);
+
+                typeDef.Fields.Add(fieldProp);
+                typeDef.Properties.Add(matProp);
+            }
+
+            var updateMethod = new ImplementedMethodDefinition(new SignatureDefinition(
+                    MethodModifiers.Public | MethodModifiers.Override, TypeSystem.Void, "Update",
+                    Array.Empty<ParameterDefinition>()),
+                new MethodBodyDefinition(
+                    new BlockExpressionDefinition(new MultilineExpressionDefinition(new CodeExpressionDefinition[]
+                        { $"if (!{dirtyField.Name})", new SimpleExpressionDefinition("return;", 1),"base.Update();" }))));
+            typeDef.Methods.Add(updateMethod);
+
+            CreateMaterialRef(effectPassType, pass, material, typeDef);
+        }
+        
+        private void CreateMaterialRef(TypeDefinition effectPassType, EffectPass pass, EffectMaterial material, TypeDefinition materialTypeDef)
+        {
+            var matRef = new TypeReference("engenious.Graphics", $"MaterialRef<{materialTypeDef.FullName}>");
+
+            var actionMatRefGen = new TypeReference("System", $"Action<{matRef}>");
+            var updateActionField = new FieldDefinition(GenericModifiers.Private, actionMatRefGen, "_updateMaterialAction");
+
+            effectPassType.Fields.Add(updateActionField);
+            var lines = new List<CodeExpressionDefinition>();
+            lines.Add("var mat = matRef.Material;");
+            
+            foreach (var (uniformName, (propName, paramInfo)) in material.Bindings)
+            {
+                if (paramInfo == null)
+                    continue;
+                var prop = effectPassType.Properties.First(
+                    x => x.Name == paramInfo.Name && x.Type == paramInfo.Type);
+                
+                lines.Add($"{prop.Name} = mat.{propName};");
+            }
+            var updateMethod = new ImplementedMethodDefinition(new SignatureDefinition(MethodModifiers.Private,
+                    TypeSystem.Void, "UpdateMaterial", new[] { new ParameterDefinition(matRef, "matRef") }),
+                new MethodBodyDefinition(new BlockExpressionDefinition(new MultilineExpressionDefinition(lines))));
+            var effectPassCtor = effectPassType.Methods.OfType<ConstructorDefinition>().First();
+            if (effectPassCtor.MethodBody.Body is BlockExpressionDefinition { ScopeContent: MultilineExpressionDefinition mle })
+            {
+                mle.Lines.Add($"{updateActionField.Name} = {updateMethod.Signature.Name};");
+            }
+            
+            effectPassType.Methods.Add(updateMethod);
+
+            var fieldProp = new FieldDefinition(GenericModifiers.Private, matRef, $"_{material.Name}");
+            var matProp = new PropertyDefinition(MethodModifiers.Public, matRef, material.Name,
+                new ImplementedPropertyMethodDefinition(new MethodBodyDefinition($"{fieldProp.Name}"), false)
+                , new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(new BlockExpressionDefinition(
+                    new MultilineExpressionDefinition(
+                        new CodeExpressionDefinition[]
+                        {
+                            $"var mat = {fieldProp.Name};",
+                            "mat?.Dispose();",
+                            $"{fieldProp.Name} = value;",
+                            $"value.Update = {updateActionField.Name};"
+                        }))), true));
+            
+            effectPassType.Fields.Add(fieldProp);
+            effectPassType.Properties.Add(matProp);
+        }
         private static Type GetType(EffectParameterType type)
         {
             Type t;

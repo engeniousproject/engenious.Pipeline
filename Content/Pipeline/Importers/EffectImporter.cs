@@ -326,6 +326,23 @@ namespace engenious.Content.Pipeline
                                     }
                                 }
                             }
+                            else if (sh.Name == "Materials")
+                            {
+                                foreach (var matEl in sh.ChildNodes.OfType<XmlElement>())
+                                {
+                                    string matName = matEl.GetAttribute("name");
+                                    var mat = new EffectMaterial(matName);
+                                    pi.Materials.Add(mat);
+                                    foreach (var attr in matEl.ChildNodes.OfType<XmlElement>())
+                                    {
+                                        if (attr.Name == "binding")
+                                        {
+                                            string nm = attr.GetAttribute("name");
+                                            mat.Bindings.Add(nm, (attr.InnerText, null));
+                                        }
+                                    }
+                                }
+                            }
                             else
                             {
                                 throw new Exception("'" + sh.Name + "' element not recognized");
@@ -413,6 +430,31 @@ namespace engenious.Content.Pipeline
     }
 
     /// <summary>
+    ///     Represents a material of a effect.
+    /// </summary>
+    public class EffectMaterial
+    {
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="EffectMaterial"/> class.
+        /// </summary>
+        /// <param name="name">The name of the material.</param>
+        public EffectMaterial(string name)
+        {
+            Name = name;
+        }
+
+        /// <summary>
+        ///     Gets the name of the material.
+        /// </summary>
+        public string Name { get; }
+
+        /// <summary>
+        ///     Gets a list of mappings from material property names to uniform name and parameterinfo.
+        /// </summary>
+        public Dictionary<string, (string, ParameterInfo?)> Bindings { get; } = new();
+    }
+    
+    /// <summary>
     ///     A class containing effect pass information for loading and processing.
     /// </summary>
     public class EffectPass
@@ -426,6 +468,7 @@ namespace engenious.Content.Pipeline
             Shaders = new Dictionary<ShaderType, string>();
             Attributes = new Dictionary<VertexElementUsage, string>();
             Parameters = new List<ParameterInfo>();
+            Materials = new List<EffectMaterial>();
         }
 
         /// <summary>
@@ -473,6 +516,11 @@ namespace engenious.Content.Pipeline
         ///     Gets a list of all parameters in this pass.
         /// </summary>
         public List<ParameterInfo> Parameters { get; }
+        
+        /// <summary>
+        ///     Gets a list of all materials in this pass.
+        /// </summary>
+        public List<EffectMaterial> Materials { get; }
     }
 
     /// <summary>
