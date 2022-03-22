@@ -96,13 +96,14 @@ namespace engenious.Content.Pipeline
             var baseType = new TypeReference("engenious.Graphics", "Effect");
             var effectTechniqueCollectionType = new TypeReference("engenious.Graphics", "EffectTechniqueCollection");
             var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
-            var typeDefinition = new TypeDefinition(typeNamespace, TypeModifiers.Class | TypeModifiers.Public, name,
-                new[] { baseType });
+            var typeDefinition = new TypeDefinition(typeNamespace, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial, name,
+                new[] { baseType }, $"/// <summary>Implementation for the {name} effect.</summary>");
             createdTypeContainer.FileDefinition.Types.Remove(typeDefinition.FullName);
             createdTypeContainer.FileDefinition.Types.Add(typeDefinition.FullName, typeDefinition);
             var ctor = new ConstructorDefinition(typeDefinition, MethodModifiers.Public,
-                new[] { new ParameterDefinition(graphicsDeviceType, "graphicsDevice") },
+                new[] { new ParameterDefinition(graphicsDeviceType, "graphicsDevice", "The graphics device for the effect.") },
                 MethodBodyDefinition.EmptyBody,
+                $"/// <summary>Initializes a new instance of the <see cref=\"{name}\"/> class.</summary>",
                 new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(graphicsDevice)") });
 
             typeDefinition.Methods.Add(ctor);
@@ -110,7 +111,7 @@ namespace engenious.Content.Pipeline
             var initializeMethod = new ImplementedMethodDefinition(
                 new SignatureDefinition(MethodModifiers.Protected | MethodModifiers.Override, TypeSystem.Void,
                     "Initialize",
-                    Array.Empty<ParameterDefinition>()), null);
+                    Array.Empty<ParameterDefinition>()), null, "/// <inheritdoc />");
 
             using var expressionBuilder = new ExpressionBuilder();
 
@@ -120,7 +121,8 @@ namespace engenious.Content.Pipeline
             {
                 var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique, createdTypeContainer);
                 var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, techniqueType, technique.Name,
-                    setterModifiers: MethodModifiers.Private);
+                    setterModifiers: MethodModifiers.Private,
+                    comment: $"/// <summary>Gets the <see cref=\"{technique.Name}\"/> technique.</summary");
 
                 expressionBuilder.Append($"{p.Name} = techniques[\"{technique.Name}\"] as {techniqueType.Name};");
             }
@@ -153,22 +155,24 @@ namespace engenious.Content.Pipeline
             var baseType = new TypeReference("engenious.Graphics", "EffectTechnique");
             var effectPassCollectionType = new TypeReference("engenious.Graphics", "EffectPassCollection");
             var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
-            var typeDefinition = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public,
-                $"{technique.Name}Impl",
-                new[] { baseType });
+            var typeDefinition = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial,
+                technique.UserTechniqueName,
+                new[] { baseType },
+                $"/// <summary>Implementation for the {technique.Name} effect technique</summary>");
 
             parent.NestedTypes.Add(typeDefinition);
             var ctor = new ConstructorDefinition
             (
                 typeDefinition, MethodModifiers.Public,
-                new[] { new ParameterDefinition(TypeSystem.String, "name") }, MethodBodyDefinition.EmptyBody,
+                new[] { new ParameterDefinition(TypeSystem.String, "name", "The name of the effect technique.") }, MethodBodyDefinition.EmptyBody,
+                $"/// <summary>Initializes a new instance of the <see cref=\"{technique.UserTechniqueName}\" /> class.</summary>",
                 new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(name)") }
             );
             typeDefinition.Methods.Add(ctor);
 
             var initializeMethod = new ImplementedMethodDefinition(
                 new SignatureDefinition(MethodModifiers.Override | MethodModifiers.Protected, TypeSystem.Void,
-                    "Initialize", Array.Empty<ParameterDefinition>()), null);
+                    "Initialize", Array.Empty<ParameterDefinition>()), null, "/// <inheritdoc />");
 
             using var initializeMethodBuilder = new ExpressionBuilder();
             initializeMethodBuilder.Append("base.Initialize();");
@@ -185,7 +189,7 @@ namespace engenious.Content.Pipeline
                 }
 
                 var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, passType, pass.Name,
-                    setterModifiers: MethodModifiers.Private);
+                    setterModifiers: MethodModifiers.Private, comment: $"/// <summary>Gets the {pass.Name} pass.</summary>");
 
                 initializeMethodBuilder.Append($"{p.Name} = passes[\"{pass.Name}\"] as {passType.Name};");
 
@@ -240,7 +244,7 @@ namespace engenious.Content.Pipeline
                 var propertyType = new TypeReference(parameterReferences[0].ParameterInfo.Type.Namespace,
                     parameterReferences[0].ParameterInfo.Type.Name);
 
-                bool isPrimitive = !string.IsNullOrEmpty(propertyType.Namespace);
+                bool isPrimitive = !(string.IsNullOrEmpty(propertyType.Namespace) && !propertyType.Name.Contains('.'));
 
                 if (parameterReferences[0].ParameterInfo is ArrayParameterInfo arrayParameterInfo)
                 {
@@ -254,21 +258,54 @@ namespace engenious.Content.Pipeline
                 if (!isPrimitive && parameterReferences.Count > 1)
                     continue;
 
-                var setterWriter = new ExpressionBuilder();
+                ExpressionBuilder? setterWriter = null;
+                ExpressionBuilder? getterWriter = null;
+
+                static MethodModifiers GetModifier(MethodModifiers parent, MethodModifiers mod)
+                {
+                    return mod == MethodModifiers.None ? parent : mod;
+                }
+
+                
                 foreach (var parameterReference in parameterReferences)
                 {
                     var (passType, passProperty) = passTypeDefinitions[parameterReference.Pass.Name];
-
+                    var propInPass = passType.Properties.First(x => x.Name == name);
                     if (isPrimitive)
-                        setterWriter.Append($"{passProperty.Name}.{name} = value");
-                    else
-                        setterWriter.Append($"{passProperty.Name}.{name}");
+                    {
+                        if ((GetModifier(propInPass.Modifiers, propInPass.SetterModifiers)
+                             & (MethodModifiers.Public | MethodModifiers.Internal)) != 0)
+                        {
+                            setterWriter ??= new();
+                            setterWriter.Append($"{passProperty.Name}.{name} = value");
+                        }
+                        if (getterWriter is null && ((GetModifier(propInPass.Modifiers, propInPass.GetterModifiers)
+                                                      & (MethodModifiers.Public | MethodModifiers.Internal)) != 0))
+                        {
+                            getterWriter = new();
+                            getterWriter.Append($"{passProperty.Name}.{name}");
+                        }
+                    }
+                    else if(getterWriter is null && ((GetModifier(propInPass.Modifiers, propInPass.GetterModifiers)
+                                                      & (MethodModifiers.Public | MethodModifiers.Internal)) != 0))
+                    {
+                        getterWriter = new();
+                        getterWriter.Append($"{passProperty.Name}.{name}");
+                    }
                 }
 
-                var m = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(setterWriter.ToExpression()),
-                    isPrimitive);
-
-                var prop = new PropertyDefinition(MethodModifiers.Public, propertyType, name, isPrimitive ? null : m, isPrimitive ? m : null);
+                var setterM = setterWriter is null
+                    ? null : new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(setterWriter.ToExpression()),
+                    true);
+                var getterM = getterWriter is null
+                    ? null : new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(getterWriter.ToExpression()),
+                    false);
+                var prop = new PropertyDefinition(
+                    MethodModifiers.Public,
+                    propertyType, name,
+                    getterM,
+                    isPrimitive ? setterM : null,
+                    Comment: $"/// <summary>{(isPrimitive ? "Sets or gets" : "Gets")} the {name} parameter.</summary>");
 
                 typeDefinition.Properties.Add(prop);
             }
@@ -282,18 +319,20 @@ namespace engenious.Content.Pipeline
             if (arrayParameterInfo == null)
                 return false;
 
-            var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public,
-                $"{arrayParameterInfo.Name}Array", null);
+            var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial,
+                $"{arrayParameterInfo.Name}Array", $"/// <summary>Wrapper class for the <c>{arrayParameterInfo.Name}</c> array.</summary>");
             typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
                 new[]
                 {
-                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass"),
-                    new ParameterDefinition(TypeSystem.Int32, "offset")
+                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass",
+                        "The parent effect pass."),
+                    new ParameterDefinition(TypeSystem.Int32, "offset", "The data offset into the buffer.")
                 },
                 new MethodBodyDefinition(
                     new BlockExpressionDefinition(
                         new MultilineExpressionDefinition(new CodeExpressionDefinition[]
-                                                          { "Pass = pass;", "Offset = offset;", "_valueAccessor = new(pass, 0);" })))));
+                                                          { "Pass = pass;", "Offset = offset;", "_valueAccessor = new(pass, 0);" }))),
+                $"/// <summary>Initializes a new instance of the <see cref=\"{typeDef.Name}\"/> class.</summary>"));
 
             var builder = new ExpressionBuilder();
 
@@ -317,17 +356,21 @@ namespace engenious.Content.Pipeline
             }
             
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public,
-                new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null));
+                new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null,
+                Comment: "/// <summary>Gets the parent effect pass.</summary>"));
 
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, TypeSystem.Int32, "Offset",
-                new SimplePropertyGetter(), new SimplePropertySetter()));
+                new SimplePropertyGetter(), new SimplePropertySetter(),
+                Comment: "/// <summary>Gets or sets the offset into the buffer.</summary>"));
 
             var m = new ImplementedPropertyMethodDefinition(
                 new MethodBodyDefinition(builder.ToExpression()), isPrimitive);
             
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, propTypeRef, "this",
                 isPrimitive ? null : m, isPrimitive ? m : null,
-                IndexerType: TypeSystem.Int32, IndexerName: "index"));
+                IndexerType: TypeSystem.Int32, IndexerName: "index",
+                Comment: $"/// <summary>{(isPrimitive ? "Sets" : "Gets")} the value at the given <paramref name=\"index\" />.</summary>\n" +
+                         $"/// <param name=\"index\">The index to {(isPrimitive ? "set" : "get")} the value at.</param>."));
             
 
             parent.NestedTypes.Add(typeDef);
@@ -340,16 +383,19 @@ namespace engenious.Content.Pipeline
             structParameterInfo = parameterInfo as StructParameterInfo;
             if (structParameterInfo == null)
                 return false;
-            var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public,
-                structParameterInfo.Name.TrimStart('\'') + "Wrapper", null);
+            var structTypeName = structParameterInfo.Name.TrimStart('\'') + "Wrapper";
+            var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial,structTypeName
+                , $"/// <summary>Wrapper class for the <c>{structTypeName}</c> struct.</summary>");
 
 
 
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public,
-                new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null));
+                new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null,
+                Comment: "/// <summary>Gets the parent effect pass.</summary>"));
 
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, TypeSystem.Int32, "Offset",
-                new SimplePropertyGetter(), new SimplePropertySetter()));
+                new SimplePropertyGetter(), new SimplePropertySetter(),
+                Comment: "/// <summary>Gets or sets the offset into the buffer.</summary>"));
 
             var ctorBuilder = new ExpressionBuilder();
                 
@@ -377,7 +423,8 @@ namespace engenious.Content.Pipeline
                 prop = prop with
                        {
                             GetMethod = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition($"{field.Name}"), false),
-                            SetMethod = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(builder.ToExpression()), true)
+                            SetMethod = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(builder.ToExpression()), true),
+                            Comment = $"/// <summary>Gets or sets the {prop.Name} value.</summary>"
                        };
                 typeDef.Properties.Add(prop);
                 typeDef.Fields.Add(field);
@@ -386,10 +433,12 @@ namespace engenious.Content.Pipeline
             typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
                 new[]
                 {
-                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass"),
-                    new ParameterDefinition(TypeSystem.Int32, "offset")
+                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass",
+                        "The parent effect pass."),
+                    new ParameterDefinition(TypeSystem.Int32, "offset", "The data offset into the buffer.")
                 },
-                new MethodBodyDefinition(ctorBuilder.ToExpression())));
+                new MethodBodyDefinition(ctorBuilder.ToExpression()), 
+                $"/// <summary>Initializes a new instance of the <see cref=\"{typeDef.Name}\"> class.</summary>"));
             parent.NestedTypes.Add(typeDef);
 
             return true;
@@ -437,8 +486,8 @@ namespace engenious.Content.Pipeline
             var effectPassParameterType = new TypeReference("engenious.Graphics", "EffectPassParameter");
             var graphicsDeviceType = new TypeReference("engenious.Graphics", "GraphicsDevice");
             var typeDefinition =
-                new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public, $"{pass.Name}Impl",
-                    new[] { baseType });
+                new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial, $"{pass.Name}Impl",
+                    new[] { baseType }, $"/// <summary>Implementation of the <see cref=\"{pass.Name}\"/>effect pass.</summary>");
 
             parent.NestedTypes.Add(typeDefinition);
 
@@ -450,6 +499,7 @@ namespace engenious.Content.Pipeline
                     new ParameterDefinition(TypeSystem.String, "name")
                 },
                 new MethodBodyDefinition(new BlockExpressionDefinition(new MultilineExpressionDefinition())),
+                $"/// <summary>Initializes a new instance of the <see cref=\"{typeDefinition.Name}\" class.</summary>", 
                 new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(graphicsDevice, name)") });
 
             typeDefinition.Methods.Add(ctor);
@@ -457,7 +507,7 @@ namespace engenious.Content.Pipeline
             var cacheParametersMethod = new ImplementedMethodDefinition(
                 new SignatureDefinition(MethodModifiers.Override | MethodModifiers.Protected, TypeSystem.Void,
                     "CacheParameters", Array.Empty<ParameterDefinition>()),
-                null);
+                null, "/// <inheritdoc />");
 
             var cacheParametersWriter = new ExpressionBuilder();
             cacheParametersWriter.Append("base.CacheParameters();");
@@ -474,7 +524,8 @@ namespace engenious.Content.Pipeline
                     var f = new FieldDefinition(GenericModifiers.Private, structType, $"_{p.Name}");
                     
                     var prop = new PropertyDefinition(MethodModifiers.Public, structType, p.Name,
-                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false), null);
+                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false),
+                        null, Comment: $"/// <summary>Gets the {p.Name} struct value.</summary>");
                     cacheParametersWriter.Append($"{f.Name} = new (this,parameters[\"{structParameterInfo.AttributeName}\"].Location);");
                     
                     typeDefinition.Fields.Add(f);
@@ -486,7 +537,8 @@ namespace engenious.Content.Pipeline
                     var arrType = new TypeReference(null, $"{arrayParameterInfo.Name}Array");
                     var f = new FieldDefinition(GenericModifiers.Private, arrType, $"_{p.Name}");
                     var prop = new PropertyDefinition(MethodModifiers.Public, arrType, p.Name,
-                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false), null);
+                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false),
+                        null, Comment: $"/// <summary>Gets the {p.Name} array values.</summary>");
                     cacheParametersWriter.Append($"{f.Name} = new (this, parameters[\"{arrayParameterInfo.AttributeName}\"].Location);");
 
                     typeDefinition.Fields.Add(f);
@@ -497,7 +549,7 @@ namespace engenious.Content.Pipeline
                 if (p.Type.Namespace == typeof(EffectPassParameter).Namespace && p.Type.Name == nameof(EffectPassParameter))
                 {
                     var paramProp = typeDefinition.AddAutoProperty(MethodModifiers.Public, paramType, p.Name,
-                        setterModifiers: MethodModifiers.Private);
+                        setterModifiers: MethodModifiers.Private, comment: $"/// <summary>Gets the {p.Name} parameter value.</summary>");
 
                     cacheParametersWriter.Append($"{paramProp.Name} = parameters[\"{p.Name}\"];");
                 }
@@ -511,6 +563,9 @@ namespace engenious.Content.Pipeline
 
                     var (paramProp, paramField) =
                         typeDefinition.CreateEmptyProperty(MethodModifiers.Public, paramType, p.Name, $"_{p.Name}");
+
+                    paramProp = paramProp with { Comment = $"/// <summary>Gets the {p.Name} parameter value.</summary>" };
+                    
                     typeDefinition.Fields.Add(paramField);
                     var getter = new MethodBodyDefinition($"{paramField.Name}");
 
@@ -568,7 +623,8 @@ namespace engenious.Content.Pipeline
                                 {
                                     GetMethod = new ImplementedPropertyMethodDefinition(getter, false),
                                     SetMethod = new ImplementedPropertyMethodDefinition(
-                                        new MethodBodyDefinition(setWriter.ToExpression()), true)
+                                        new MethodBodyDefinition(setWriter.ToExpression()), true),
+                                    Comment = $"/// <summary>Gets or sets the {p.Name} parameter.</summary>"
                                 };
 
                     typeDefinition.Properties.Add(paramProp);
@@ -634,7 +690,9 @@ namespace engenious.Content.Pipeline
         {
 
                 
-            var typeDef = new TypeDefinition("engenious.Graphics.UserDefined.Materials", TypeModifiers.Class | TypeModifiers.Sealed | TypeModifiers.Public, material.Name, new TypeReference[1]);
+            var typeDef = new TypeDefinition("engenious.Graphics.UserDefined.Materials",
+                TypeModifiers.Class | TypeModifiers.Sealed | TypeModifiers.Public, material.Name, new TypeReference[1],
+                $"/// <summary>Implementation for {material.Name} material.</summary>");
 
             createdTypeContainer.FileDefinition.Types.Remove(typeDef.FullName);
             
@@ -648,8 +706,8 @@ namespace engenious.Content.Pipeline
             {
                 const string paramName = "materialName";
                 var ctor = new ConstructorDefinition(typeDef, MethodModifiers.Public,
-                    new[] { new ParameterDefinition(TypeSystem.String, paramName) }, MethodBodyDefinition.EmptyBody,
-                    new CodeExpressionDefinition[] { $"base({paramName})" });
+                    new[] { new ParameterDefinition(TypeSystem.String, paramName, $"The name of the material.") }, MethodBodyDefinition.EmptyBody,
+                    $"/// <summary>Initializes a new instance of the <see cref=\"{typeDef.Name}\"/> class.</summary>",new CodeExpressionDefinition[] { $"base({paramName})" });
                 
                 typeDef.Methods.Add(ctor);
             }
@@ -668,7 +726,7 @@ namespace engenious.Content.Pipeline
                 
                 var matProp = new PropertyDefinition(MethodModifiers.Public, paramInfo.Type, propName, 
                     new ImplementedPropertyMethodDefinition(new MethodBodyDefinition($"{fieldProp.Name}"), false),
-                    setter);
+                    setter, Comment: $"/// <summary>Gets or sets the {propName} property.</summary>");
 
                 typeDef.Fields.Add(fieldProp);
                 typeDef.Properties.Add(matProp);
@@ -679,7 +737,8 @@ namespace engenious.Content.Pipeline
                     Array.Empty<ParameterDefinition>()),
                 new MethodBodyDefinition(
                     new BlockExpressionDefinition(new MultilineExpressionDefinition(new CodeExpressionDefinition[]
-                        { $"if (!{dirtyField.Name})", new SimpleExpressionDefinition("return;", 1),"base.Update();" }))));
+                        { $"if (!{dirtyField.Name})", new SimpleExpressionDefinition("return;", 1),"base.Update();" }))),
+                "/// <inheritdoc />");
             typeDef.Methods.Add(updateMethod);
 
             CreateMaterialRef(effectPassType, pass, material, typeDef);
@@ -727,7 +786,7 @@ namespace engenious.Content.Pipeline
                             "mat?.Dispose();",
                             $"{fieldProp.Name} = value;",
                             $"value.Update = {updateActionField.Name};"
-                        }))), true));
+                        }))), true), Comment: "/// <summary>Gets or sets a reference to the material.</summary>");
             
             effectPassType.Fields.Add(fieldProp);
             effectPassType.Properties.Add(matProp);

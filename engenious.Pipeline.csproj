@@ -25,7 +25,7 @@
         <PackageReference Include="MsdfGen.Net" Version="0.1.5-alpha" />
         <PackageReference Include="OpenTK" Version="4.5.0" />
         <ProjectReference Include="..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj" Condition="Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
-        <PackageReference Include="engenious.Pipeline.Core" Version="0.6.0.3-alpha" Condition="!Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
+        <PackageReference Include="engenious.Pipeline.Core" Version="0.6.1-alpha" Condition="!Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
         <PackageReference Include="engenious" Version="0.6.0.5-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
