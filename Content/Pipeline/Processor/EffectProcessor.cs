@@ -499,7 +499,7 @@ namespace engenious.Content.Pipeline
                     new ParameterDefinition(TypeSystem.String, "name")
                 },
                 new MethodBodyDefinition(new BlockExpressionDefinition(new MultilineExpressionDefinition())),
-                $"/// <summary>Initializes a new instance of the <see cref=\"{typeDefinition.Name}\" class.</summary>", 
+                $"/// <summary>Initializes a new instance of the <see cref=\"{typeDefinition.Name}\"/> class.</summary>", 
                 new CodeExpressionDefinition[] { new SimpleExpressionDefinition("base(graphicsDevice, name)") });
 
             typeDefinition.Methods.Add(ctor);
