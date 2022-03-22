@@ -122,7 +122,7 @@ namespace engenious.Content.Pipeline
                 var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique, createdTypeContainer);
                 var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, techniqueType, technique.Name,
                     setterModifiers: MethodModifiers.Private,
-                    comment: $"/// <summary>Gets the <see cref=\"{technique.Name}\"/> technique.</summary");
+                    comment: $"/// <summary>Gets the <see cref=\"{technique.Name}\"/> technique.</summary>");
 
                 expressionBuilder.Append($"{p.Name} = techniques[\"{technique.Name}\"] as {techniqueType.Name};");
             }
