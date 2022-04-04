@@ -244,7 +244,7 @@ namespace engenious.Content.Pipeline
                 var propertyType = new TypeReference(parameterReferences[0].ParameterInfo.Type.Namespace,
                     parameterReferences[0].ParameterInfo.Type.Name);
 
-                bool isPrimitive = !(string.IsNullOrEmpty(propertyType.Namespace) && !propertyType.Name.Contains('.'));
+                bool isPrimitive = (parameterReferences[0].ParameterInfo is not ArrayParameterInfo && parameterReferences[0].ParameterInfo is not StructParameterInfo);
 
                 if (parameterReferences[0].ParameterInfo is ArrayParameterInfo arrayParameterInfo)
                 {
@@ -321,6 +321,8 @@ namespace engenious.Content.Pipeline
 
             var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial,
                 $"{arrayParameterInfo.Name}Array", $"/// <summary>Wrapper class for the <c>{arrayParameterInfo.Name}</c> array.</summary>");
+            
+            bool isPrimitive = !(arrayParameterInfo.Type.Name.EndsWith("Wrapper") || arrayParameterInfo.Type.Name.EndsWith("Array"));
             typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
                 new[]
                 {
@@ -331,15 +333,14 @@ namespace engenious.Content.Pipeline
                 new MethodBodyDefinition(
                     new BlockExpressionDefinition(
                         new MultilineExpressionDefinition(new CodeExpressionDefinition[]
-                                                          { "Pass = pass;", "Offset = offset;", "_valueAccessor = new(pass, 0);" }))),
+                                                          { "Pass = pass;", "Offset = offset;", isPrimitive ? "" : "_valueAccessor = new(pass, 0);" }))),
                 $"/// <summary>Initializes a new instance of the <see cref=\"{typeDef.Name}\"/> class.</summary>"));
 
             var builder = new ExpressionBuilder();
 
-            bool isPrimitive = !string.IsNullOrEmpty(arrayParameterInfo.Type.Namespace);
 
             var propTypeRef = new TypeReference(parameterInfo.Type.Namespace,
-                parameterInfo.Type.Name.TrimStart('\'') + "Wrapper");
+                parameterInfo.Type.Name.TrimStart('\''));
             if (isPrimitive)
             {
                 builder.Append($"if (index < 0 || index >= {arrayParameterInfo.Length})");
@@ -888,37 +889,26 @@ namespace engenious.Content.Pipeline
 
                         foreach (var p in compiledPass.Parameters)
                         {
-                            var dotInd = p.Name.LastIndexOf('.');
-                            if (dotInd != -1)
+                            var structName = p.Name;
+                            var dotInd = structName.LastIndexOf('.');
+                            if (dotInd == -1)
                             {
-                                var subName = p.Name[..dotInd];
+                                if (CreateArray(ref structName, subs, p, pass))
+                                    continue;
+                            }
+                            else
+                            {
+                                var subName = structName[..dotInd];
 
-                                var prevIndex = p.Name.LastIndexOf('.', dotInd - 1);
+                                var prevIndex = structName.LastIndexOf('.', dotInd - 1);
                                 if (prevIndex == -1)
                                 {
                                     prevIndex = 0;
                                 }
 
-                                var structName = p.Name[prevIndex..dotInd];
+                                structName = p.Name[prevIndex..dotInd];
 
-                                if (structName.EndsWith(']'))
-                                {
-                                    var beg = structName.LastIndexOf('[');
-                                    int arrayIndex = int.Parse(structName[(beg + 1)..^1]);
-                                    var arrayName = structName[..(beg)];
-                                    structName =
-                                        arrayName.EndsWith("s") ? $"'{arrayName[..^1]}" : "'unnamedStructTODO"; // TODO:
-
-                                    if (!subs.TryGetValue(arrayName, out var param))
-                                    {
-                                        var typeRef = p.Name.EndsWith("]") ? GetType(p.Type).ToTypeReference() : new TypeReference(null, structName);
-                                        param = new ArrayParameterInfo(p.Name, arrayName, typeRef, 0);
-                                        subs.Add(arrayName, param);
-                                        pass.Parameters.Add(param);
-                                    }
-
-                                    ((ArrayParameterInfo)param).Length = arrayIndex + 1;
-                                }
+                                _ = CreateArray(ref structName, subs, p, pass);
 
                                 {
                                     if (!subs.TryGetValue(structName, out var param))
@@ -997,6 +987,32 @@ namespace engenious.Content.Pipeline
             }
 
             return null;
+        }
+
+        private static bool CreateArray(ref string structName, Dictionary<string, ParameterInfo> subs, EffectPassParameter p, EffectPass pass)
+        {
+            if (!structName.EndsWith(']'))
+                return false;
+
+            var beg = structName.LastIndexOf('[');
+            int arrayIndex = int.Parse(structName[(beg + 1)..^1]);
+            var arrayName = structName[..(beg)];
+            structName =
+                arrayName.EndsWith("s") ? $"'{arrayName[..^1]}" : "'unnamedStructTODO"; // TODO:
+
+            if (!subs.TryGetValue(arrayName, out var param))
+            {
+                var typeRef = p.Name.EndsWith("]")
+                    ? GetType(p.Type).ToTypeReference()
+                    : new TypeReference(null, $"{structName}Wrapper");
+                param = new ArrayParameterInfo(p.Name, arrayName, typeRef, 0);
+                subs.Add(arrayName, param);
+                pass.Parameters.Add(param);
+            }
+
+            ((ArrayParameterInfo)param).Length = arrayIndex + 1;
+            return true;
+
         }
     }
 
