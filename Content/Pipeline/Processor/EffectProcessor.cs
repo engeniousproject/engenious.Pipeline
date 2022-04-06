@@ -352,6 +352,8 @@ namespace engenious.Content.Pipeline
                 var fld = new FieldDefinition(GenericModifiers.Private, propTypeRef, $"_valueAccessor");
                 typeDef.Fields.Add(fld);
                 // cacheParametersWriter.Append("");
+                builder.Append($"if (index < 0 || index >= {arrayParameterInfo.Length})");
+                builder.Append(new SimpleExpressionDefinition("throw new System.ArgumentOutOfRangeException(nameof(index));", 1));
                 builder.Append($"{fld.Name}.Offset =  Offset + index * {arrayParameterInfo.LayoutSize / arrayParameterInfo.Length};");
                 builder.Append($"return _valueAccessor;");
             }
