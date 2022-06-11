@@ -12,6 +12,36 @@ namespace engenious.Content.Serialization
     {
         #region implemented abstract members of ContentTypeWriter
 
+        private static int CountLines(string source)
+        {
+            int curInd = -1;
+            var count = 0;
+            while (true)
+            {
+                curInd = source.IndexOf('\n', curInd + 1);
+                if (curInd == -1)
+                    break;
+                count++;
+            }
+
+            return count;
+        }
+        private static (int headLineCount, string head, string source) ProcessShader(string source)
+        {
+            int versionPos = source.IndexOf("#version", StringComparison.Ordinal);
+            if (versionPos == -1)
+            {
+                return (1, "#version {0}\r\n", source);
+            }
+            var newLinePos = source.IndexOf('\n', versionPos);
+            if (newLinePos == -1)
+                newLinePos = source.Length - 1;
+            var head = source[..(newLinePos + 1)];
+            source = source[(newLinePos + 1)..];
+
+            return (CountLines(head) + 1, head, source);
+        }
+
         /// <inheritdoc />
         public override void Write(ContentWriter writer, EffectContent? value)
         {
@@ -42,7 +72,10 @@ namespace engenious.Content.Serialization
                     foreach (var shader in pass.Shaders)
                     {
                         writer.Write((ushort)shader.Key);
-                        writer.Write(File.ReadAllText(shader.Value));
+                        var (headLineCount, head, source) = ProcessShader(File.ReadAllText(shader.Value));
+                        writer.Write(headLineCount);
+                        writer.Write(head);
+                        writer.Write(source);
                     }
 
                     writer.Write((byte)pass.Attributes.Count);
@@ -64,7 +97,7 @@ namespace engenious.Content.Serialization
         ///     Initializes a new instance of the <see cref="EffectTypeWriter"/> class.
         /// </summary>
         public EffectTypeWriter()
-            : base(0)
+            : base(1)
         {
         }
     }

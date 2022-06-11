@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using engenious.Graphics;
 using engenious.Pipeline.Helper;
 using engenious.Content.CodeGenerator;
@@ -83,6 +84,76 @@ namespace engenious.Content.Pipeline
             }
         }
 
+        private (EffectSettings settings, TypeDefinition type)? GeneratePassSettings(EffectPass pass)
+        {
+            if (pass.Settings is null)
+                return null;
+            return (pass.Settings, GenerateEffectSettings(pass.Settings, pass.Name, null));
+        }
+
+        private (EffectSettings settings, TypeDefinition type)? GenerateTechniqueSettings(EffectTechnique technique)
+        {
+            var nestedSettings = new List<(string, EffectSettings)>();
+            var passSettingTypes = new List<(string, TypeDefinition)>();
+            var settings = new EffectSettings();
+            foreach (var p in technique.Passes)
+            {
+                var ps = GeneratePassSettings(p);
+                if (ps is not null)
+                {
+                    settings.MergeWith(ps.Value.settings);
+                    nestedSettings.Add((p.Name, ps.Value.settings));
+                    passSettingTypes.Add((p.Name, ps.Value.type));
+                }
+            }
+
+            if (technique.Settings is not null)
+            {
+                settings.MergeWith(technique.Settings);
+            }
+
+            return CreateMergedSetting(technique.Name, settings, nestedSettings, passSettingTypes);
+        }
+        private TypeDefinition? GenerateEffectSettings(EffectContent effect, string name)
+        {
+            var nestedSettings = new List<(string, EffectSettings)>();
+            var techniqueSettingTypes = new List<(string, TypeDefinition)>();
+            var settings = new EffectSettings();
+            foreach (var technique in effect.Techniques)
+            {
+                var ts = GenerateTechniqueSettings(technique);
+                if (ts is not null)
+                {
+                    settings.MergeWith(ts.Value.settings);
+                    nestedSettings.Add((technique.Name, ts.Value.settings));
+                    techniqueSettingTypes.Add((technique.Name, ts.Value.type));
+                }
+            }
+
+            if (effect.Settings is not null)
+            {
+                settings.MergeWith(effect.Settings);
+            }
+
+            return CreateMergedSetting(name, settings, nestedSettings, techniqueSettingTypes)?.Item2;
+        }
+
+        private (EffectSettings, TypeDefinition)? CreateMergedSetting(string name, EffectSettings settings, List<(string, EffectSettings)> nestedSettings,
+            List<(string, TypeDefinition)> settingTypes)
+        {
+            if (settings.Settings.Count == 0)
+                return null;
+            var typeDefinition = GenerateEffectSettings(settings, name, nestedSettings)!;
+            foreach (var (tname, t) in settingTypes)
+            {
+                typeDefinition.NestedTypes.Add(t);
+
+                typeDefinition.AddAutoProperty(MethodModifiers.Public, t, tname);
+            }
+
+            return (settings, typeDefinition);
+        }
+
         private void GenerateEffectSource(string filename, EffectContent input, string @namespace, string name,
             ContentProcessorContext context)
         {
@@ -117,8 +188,10 @@ namespace engenious.Content.Pipeline
 
             expressionBuilder.Append("base.Initialize();");
             expressionBuilder.Append("var techniques = Techniques;");
+            var techniqueSettings = new List<(string, EffectSettings.Setting)>();
             foreach (var technique in input.Techniques)
             {
+                var passSettings = new List<(string, EffectSettings.Setting)>();
                 var techniqueType = GenerateEffectTechniqueSource(typeDefinition, technique, createdTypeContainer);
                 var p = typeDefinition.AddAutoProperty(MethodModifiers.Public, techniqueType, technique.Name,
                     setterModifiers: MethodModifiers.Private,
@@ -133,6 +206,12 @@ namespace engenious.Content.Pipeline
                                };
 
             typeDefinition.Methods.Add(initializeMethod);
+
+            var settingsType = GenerateEffectSettings(input, name);
+            if (settingsType is not null)
+            {
+                typeDefinition.NestedTypes.Add(settingsType);
+            }
         }
 
         struct ParameterReference
@@ -147,6 +226,163 @@ namespace engenious.Content.Pipeline
             public ParameterInfo ParameterInfo;
         }
 
+        private TypeReference ExtractSettingType(EffectSettings.SettingType settingType)
+        {
+            return settingType switch
+            {
+                EffectSettings.SettingType.None => TypeSystem.String,
+                EffectSettings.SettingType.Bool => TypeSystem.Boolean,
+                EffectSettings.SettingType.Int => TypeSystem.Int32,
+                EffectSettings.SettingType.UInt => TypeSystem.UInt32,
+                EffectSettings.SettingType.Float => TypeSystem.Single,
+                EffectSettings.SettingType.Double => TypeSystem.Double,
+                EffectSettings.SettingType.BVec2 => new TypeReference(null, "(bool x, bool y)"),
+                EffectSettings.SettingType.BVec3 => new TypeReference(null, "(bool x, bool y, bool z)"),
+                EffectSettings.SettingType.BVec4 => new TypeReference(null, "(bool x, bool y, bool z, bool w)"),
+                EffectSettings.SettingType.IVec2 => new TypeReference(null, "(int x, int y)"),
+                EffectSettings.SettingType.IVec3 => new TypeReference(null, "(int x, int y, int z)"),
+                EffectSettings.SettingType.IVec4 => new TypeReference(null, "(int x, int y, int z, int w)"),
+                EffectSettings.SettingType.UVec2 => new TypeReference(null, "(uint x, uint y)"),
+                EffectSettings.SettingType.UVec3 => new TypeReference(null, "(uint x, uint y, uint z)"),
+                EffectSettings.SettingType.UVec4 => new TypeReference(null, "(uint x, uint y, uint z, uint w)"),
+                EffectSettings.SettingType.Vec2 => new TypeReference("engenious", "Vector2"),
+                EffectSettings.SettingType.Vec3 => new TypeReference("engenious", "Vector3"),
+                EffectSettings.SettingType.Vec4 => new TypeReference("engenious", "Vector4"),
+                EffectSettings.SettingType.DVec2 => new TypeReference("engenious", "Vector2d"),
+                EffectSettings.SettingType.DVec3 => new TypeReference("engenious", "Vector3d"),
+                EffectSettings.SettingType.DVec4 => new TypeReference("engenious", "Vector4d"),
+                // TODO: implement other matrix types
+                EffectSettings.SettingType.Mat2x2 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat3x2 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat4x2 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat2x3 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat3x3 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat4x3 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat2x4 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat3x4 => new TypeReference(null, "float[]"),
+                EffectSettings.SettingType.Mat4x4 => new TypeReference("engenious", "Matrix"),
+                _ => throw new ArgumentOutOfRangeException(nameof(settingType), settingType, null)
+            };
+        }
+
+        private static string SettingInterpolationString(EffectSettings.Setting setting, string settingName)
+        {
+            return setting.Type switch
+            {
+                EffectSettings.SettingType.None => $"{{{settingName}}}",
+                EffectSettings.SettingType.Bool => $"{{({settingName} ? \"true\" : \"false\")}}",
+                EffectSettings.SettingType.Int
+                    or EffectSettings.SettingType.UInt
+                    or EffectSettings.SettingType.Float
+                    or EffectSettings.SettingType.Double => $"{{{settingName}}}",
+                EffectSettings.SettingType.BVec2
+                    or EffectSettings.SettingType.IVec2
+                    or EffectSettings.SettingType.UVec2 => $"{setting.ToTypeString()}({{InvariantToString({settingName}.x)}}, {{InvariantToString({settingName}.y))}}",
+                EffectSettings.SettingType.BVec3
+                    or EffectSettings.SettingType.IVec3
+                    or EffectSettings.SettingType.UVec3 => $"{setting.ToTypeString()}({{InvariantToString({settingName}.x)}}, {{InvariantToString({settingName}.y)}}, {{InvariantToString({settingName}.z)}})",
+                EffectSettings.SettingType.BVec4
+                    or EffectSettings.SettingType.IVec4
+                    or EffectSettings.SettingType.UVec4 => $"{setting.ToTypeString()}({{InvariantToString({settingName}.x)}}, {{InvariantToString({settingName}.y)}}, {{InvariantToString({settingName}.z)}}, {{InvariantToString({settingName}.w)}})",
+                EffectSettings.SettingType.Vec2
+                    or EffectSettings.SettingType.DVec2=> $"{setting.ToTypeString()}({{InvariantToString({settingName}.X)}}, {{InvariantToString({settingName}.Y)}})",
+                EffectSettings.SettingType.Vec3
+                    or EffectSettings.SettingType.DVec3=> $"{setting.ToTypeString()}({{InvariantToString({settingName}.X)}}, {{InvariantToString({settingName}.Y)}}, {{InvariantToString({settingName}.Z)}})",
+                EffectSettings.SettingType.Vec4
+                    or EffectSettings.SettingType.DVec4 => $"{setting.ToTypeString()}({{InvariantToString({settingName}.X)}}, {{InvariantToString({settingName}.Y)}}, {{InvariantToString({settingName}.Z)}}, {{InvariantToString({settingName}.W)}})",
+                // TODO: implement other matrix types
+                EffectSettings.SettingType.Mat2x2 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}})",
+                EffectSettings.SettingType.Mat3x2 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}})",
+                EffectSettings.SettingType.Mat4x2 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}}, {{InvariantToString({settingName}[6])}}, {{InvariantToString({settingName}[7])}})",
+                EffectSettings.SettingType.Mat2x3 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}})",
+                EffectSettings.SettingType.Mat3x3 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}}, {{InvariantToString({settingName}[6])}}, {{InvariantToString({settingName}[7])}}, {{InvariantToString({settingName}[8])}})",
+                EffectSettings.SettingType.Mat4x3 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}}, {{InvariantToString({settingName}[6])}}, {{InvariantToString({settingName}[7])}}, {{InvariantToString({settingName}[8])}}, {{InvariantToString({settingName}[9])}}, {{InvariantToString({settingName}[10])}}, {{InvariantToString({settingName}[11])}})",
+                EffectSettings.SettingType.Mat2x4 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}}, {{InvariantToString({settingName}[6])}}, {{InvariantToString({settingName}[7])}})",
+                EffectSettings.SettingType.Mat3x4 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}}, {{InvariantToString({settingName}[6])}}, {{InvariantToString({settingName}[7])}}, {{InvariantToString({settingName}[8])}}, {{InvariantToString({settingName}[9])}}, {{InvariantToString({settingName}[10])}}, {{InvariantToString({settingName}[11])}})",
+                EffectSettings.SettingType.Mat4x4 => $"{setting.ToTypeString()}({{InvariantToString({settingName}[0])}}, {{InvariantToString({settingName}[1])}}, {{InvariantToString({settingName}[2])}}, {{InvariantToString({settingName}[3])}}, {{InvariantToString({settingName}[4])}}, {{InvariantToString({settingName}[5])}}, {{InvariantToString({settingName}[6])}}, {{InvariantToString({settingName}[7])}}, {{InvariantToString({settingName}[8])}}, {{InvariantToString({settingName}[9])}}, {{InvariantToString({settingName}[10])}}, {{InvariantToString({settingName}[11])}}, {{InvariantToString({settingName}[12])}}, {{InvariantToString({settingName}[13])}}, {{InvariantToString({settingName}[14])}}, {{InvariantToString({settingName}[15])}})",
+                _ => throw new ArgumentOutOfRangeException(nameof(setting), setting.Type, null)
+            };
+        }
+
+        private static string AdditionalLineString(EffectSettings.Setting setting, string settingName)
+        {
+            return setting.Kind switch
+            {
+                EffectSettings.SettingKind.Define =>
+                    $"#define {settingName} {SettingInterpolationString(setting, settingName)}",
+                EffectSettings.SettingKind.Const =>
+                    $"const {setting.ToTypeString()} {settingName} = {SettingInterpolationString(setting, settingName)};",
+                _ => throw new ArgumentOutOfRangeException(nameof(setting))
+            };
+        }
+        private TypeDefinition GenerateEffectSettings(EffectSettings settings, string settingsName,
+            List<(string name, EffectSettings setting)>? nestedSettings)
+        {
+            var tp = new TypeDefinition(string.Empty,
+                TypeModifiers.RecordClass | TypeModifiers.Public | TypeModifiers.Partial, $"{settingsName}Settings",
+                new []{ new TypeReference("engenious.Graphics", "IEffectSettings") },
+                $"/// <summary>Implementation for the effect settings.</summary>");
+            var additionalSb = new StringBuilder();
+            foreach (var (name, setting) in settings.Settings)
+            {
+                var nestedProperty = nestedSettings is null
+                        ? Array.Empty<(string name, EffectSettings setting)>()
+                    : nestedSettings.Where(x => x.setting.Settings.ContainsKey(name)).ToArray();
+                additionalSb.AppendLine(AdditionalLineString(setting, name));
+                const string getOnly = "Gets";
+                const string getOrSetOnly = "Gets or sets";
+                var settingsType = ExtractSettingType(setting.Type);
+
+                string comment = $"/// {(nestedProperty.Length > 1 ? getOnly : getOrSetOnly)} the {name} setting.";
+
+                if (nestedProperty.Length == 0)
+                {
+                    tp.AddAutoProperty(MethodModifiers.Public, settingsType, name, comment);
+                }
+                else
+                {
+                    var setterBodySb = new StringBuilder();
+                    setterBodySb.AppendLine($"_{name} = value;");
+                    foreach (var (npName, np) in nestedProperty)
+                    {
+                        if (np.Settings[name].Type != setting.Type || np.Settings[name].Kind != setting.Kind)
+                        {
+                            throw new InvalidOperationException();
+                        }
+                        setterBodySb.AppendLine($"{npName}.{name} = value;");
+                    }
+
+                    PropertyMethodDefinition propGetterDef;
+                    if (nestedProperty.Length == 1)
+                    {
+                        propGetterDef = new ImplementedPropertyMethodDefinition(
+                            new MethodBodyDefinition($"{nestedProperty[0].name}.{name}"), false);
+                    }
+                    else
+                    {
+                        propGetterDef = new ImplementedPropertyMethodDefinition(
+                            new MethodBodyDefinition($"_{name}"), false);
+                    }
+
+                    var propSetter =
+                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(setterBodySb.ToString()),
+                            true);
+
+                    var prop = new PropertyDefinition(MethodModifiers.Public, settingsType, name, propGetterDef, propSetter,GetterModifiers: nestedProperty.Length == 1 ? MethodModifiers.None : MethodModifiers.Private, Comment: comment);
+                    tp.Properties.Add(prop);
+                }
+            }
+
+            var toStringBody = new MethodBodyDefinition($"return $\"{additionalSb.ToString()}\"");
+
+            var toString = new ImplementedMethodDefinition(new SignatureDefinition(
+                MethodModifiers.Public, TypeSystem.String, "ToCode",
+                Array.Empty<ParameterDefinition>()), toStringBody, "/// <inheritdoc />");
+
+            tp.Methods.Add(toString);
+
+            return tp;
+        }
         private TypeDefinition GenerateEffectTechniqueSource(TypeDefinition parent, EffectTechnique technique,
             CreatedContentCode.CreatedTypeContainer createdTypeContainer)
         {
@@ -321,6 +557,8 @@ namespace engenious.Content.Pipeline
 
             var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial,
                 $"{arrayParameterInfo.Name}Array", $"/// <summary>Wrapper class for the <c>{arrayParameterInfo.Name}</c> array.</summary>");
+
+            typeDef.AddAutoGetterProperty(MethodModifiers.Public, TypeSystem.Int32, "Length", "/// <summary>Gets the length of the array.</summary>");
             
             bool isPrimitive = !(arrayParameterInfo.Type.Name.EndsWith("Wrapper") || arrayParameterInfo.Type.Name.EndsWith("Array"));
             typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
@@ -328,12 +566,12 @@ namespace engenious.Content.Pipeline
                 {
                     new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPass"), "pass",
                         "The parent effect pass."),
-                    new ParameterDefinition(TypeSystem.Int32, "offset", "The data offset into the buffer.")
+                    new ParameterDefinition(new TypeReference("engenious.Graphics", "EffectPassParameter"), "parameter", "The corresponding parameter.")
                 },
                 new MethodBodyDefinition(
                     new BlockExpressionDefinition(
                         new MultilineExpressionDefinition(new CodeExpressionDefinition[]
-                                                          { "Pass = pass;", "Offset = offset;", isPrimitive ? "" : "_valueAccessor = new(pass, 0);" }))),
+                                                          { "Pass = pass;", "Offset = parameter.Location;", "Length = parameter.Size;", isPrimitive ? "" : "_valueAccessor = new(pass, 0);" }))),
                 $"/// <summary>Initializes a new instance of the <see cref=\"{typeDef.Name}\"/> class.</summary>"));
 
             var builder = new ExpressionBuilder();
@@ -341,22 +579,31 @@ namespace engenious.Content.Pipeline
 
             var propTypeRef = new TypeReference(parameterInfo.Type.Namespace,
                 parameterInfo.Type.Name.TrimStart('\''));
+
+            string layoutSizeGetter;
+
             if (isPrimitive)
             {
-                builder.Append($"if (index < 0 || index >= {arrayParameterInfo.Length})");
+                builder.Append($"if (index < 0 || index >= Length)");
                 builder.Append(new SimpleExpressionDefinition("throw new System.ArgumentOutOfRangeException(nameof(index));", 1));
                 builder.Append("engenious.Graphics.EffectPassParameter.SetValue(Pass, Offset + index, value);");
+                layoutSizeGetter = "Length";
             }
             else
             {
                 var fld = new FieldDefinition(GenericModifiers.Private, propTypeRef, $"_valueAccessor");
                 typeDef.Fields.Add(fld);
                 // cacheParametersWriter.Append("");
-                builder.Append($"if (index < 0 || index >= {arrayParameterInfo.Length})");
+                builder.Append($"if (index < 0 || index >= Length)");
                 builder.Append(new SimpleExpressionDefinition("throw new System.ArgumentOutOfRangeException(nameof(index));", 1));
-                builder.Append($"{fld.Name}.Offset =  Offset + index * {arrayParameterInfo.LayoutSize / arrayParameterInfo.Length};");
+                builder.Append($"{fld.Name}.Offset =  Offset + index * {fld.Name}.LayoutSize;");
                 builder.Append($"return _valueAccessor;");
+                layoutSizeGetter = $"{fld.Name}.LayoutSize * Length";
             }
+
+            typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public, TypeSystem.Int32, "LayoutSize",
+                new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(layoutSizeGetter), false), null,
+                Comment:"/// <summary>Gets the layout size.</summary>"));
             
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public,
                 new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null,
@@ -390,7 +637,7 @@ namespace engenious.Content.Pipeline
             var typeDef = new TypeDefinition(string.Empty, TypeModifiers.Class | TypeModifiers.Public | TypeModifiers.Partial,structTypeName
                 , $"/// <summary>Wrapper class for the <c>{structTypeName}</c> struct.</summary>");
 
-
+            typeDef.AddAutoGetterProperty(MethodModifiers.Public, TypeSystem.Int32, "LayoutSize", "/// <summary>Gets the layout size.</summary>");
 
             typeDef.Properties.Add(new PropertyDefinition(MethodModifiers.Public,
                 new TypeReference("engenious.Graphics", "EffectPass"), "Pass", new SimplePropertyGetter(), null,
@@ -404,25 +651,36 @@ namespace engenious.Content.Pipeline
                 
             ctorBuilder.Append("Pass = pass;");
             ctorBuilder.Append("Offset = offset;");
+            ctorBuilder.Append("int layoutOffset = 0;");
             int index = 0;
             foreach (var p in structParameterInfo.SubParameters)
             {
+                var pName = p.Name.TrimStart('\'');
+                var (prop, field) = typeDef.CreateEmptyProperty(MethodModifiers.Public, p.Type, pName, $"_{pName}");
+
+                var offsetField =
+                    new FieldDefinition(GenericModifiers.Private, TypeSystem.Int32, $"_{pName}__offset__");
+                typeDef.Fields.Add(offsetField);
                 if (TryGenerateStruct(typeDef, p, out var subStructParam))
                 {
                     var subField = new FieldDefinition(GenericModifiers.Private, subStructParam.Type,
                         $"_{subStructParam.Name}");
                     typeDef.Fields.Add(subField);
-                    ctorBuilder.Append($"{subField.Name} = new (pass, {subStructParam.AttributeName};");
+                    ctorBuilder.Append($"{subField.Name} = new (pass, {subStructParam.AttributeName});");
+
+                    ctorBuilder.Append($"{offsetField.Name} = (({subField.Name}.LayoutSize == 0) ? -1 : layoutOffset += {subField.Name}.LayoutSize);");
                 }
-                var pName = p.Name.TrimStart('\'');
-                var (prop, field) = typeDef.CreateEmptyProperty(MethodModifiers.Public, p.Type, pName, $"_{pName}");
+                else
+                {
+                    ctorBuilder.Append($"{offsetField.Name} = ((pass.GetUniformLocation(\"{p.FullName}\") == -1) ? -1 : layoutOffset++);");
+                }
 
                 var builder = new ExpressionBuilder();
                 
+                builder.Append($"if ({offsetField.Name} == -1) return;");
                 builder.Append($"{field.Name} = value;");
-                builder.Append($"engenious.Graphics.EffectPassParameter.SetValue(Pass, Offset + {index++}, value);");
+                builder.Append($"engenious.Graphics.EffectPassParameter.SetValue(Pass, Offset + {offsetField.Name}, value);");
 
-                
                 prop = prop with
                        {
                             GetMethod = new ImplementedPropertyMethodDefinition(new MethodBodyDefinition($"{field.Name}"), false),
@@ -432,6 +690,7 @@ namespace engenious.Content.Pipeline
                 typeDef.Properties.Add(prop);
                 typeDef.Fields.Add(field);
             }
+            ctorBuilder.Append($"LayoutSize = layoutOffset;");
 
             typeDef.Methods.Add(new ConstructorDefinition(typeDef, MethodModifiers.Public,
                 new[]
@@ -529,7 +788,7 @@ namespace engenious.Content.Pipeline
                     var prop = new PropertyDefinition(MethodModifiers.Public, structType, p.Name,
                         new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false),
                         null, Comment: $"/// <summary>Gets the {p.Name} struct value.</summary>");
-                    cacheParametersWriter.Append($"{f.Name} = new (this,parameters[\"{structParameterInfo.AttributeName}\"].Location);");
+                    cacheParametersWriter.Append($"{f.Name} = new (this, parameters[\"{structParameterInfo.AttributeName}\"].Location);");
                     
                     typeDefinition.Fields.Add(f);
                     typeDefinition.Properties.Add(prop);
@@ -542,7 +801,7 @@ namespace engenious.Content.Pipeline
                     var prop = new PropertyDefinition(MethodModifiers.Public, arrType, p.Name,
                         new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(f.Name), false),
                         null, Comment: $"/// <summary>Gets the {p.Name} array values.</summary>");
-                    cacheParametersWriter.Append($"{f.Name} = new (this, parameters[\"{arrayParameterInfo.AttributeName}\"].Location);");
+                    cacheParametersWriter.Append($"{f.Name} = new (this, parameters[\"{arrayParameterInfo.AttributeName}\"]);");
 
                     typeDefinition.Fields.Add(f);
                     typeDefinition.Properties.Add(prop);
@@ -921,12 +1180,12 @@ namespace engenious.Content.Pipeline
                                     }
 
                                     ((StructParameterInfo)param).SubParameters.Add(
-                                        new ParameterInfo(p.Name[(dotInd + 1)..], GetType(p.Type)));
+                                        new ParameterInfo(p.Name, p.Name[(dotInd + 1)..], GetType(p.Type)));
                                 }
                                 continue;
                             }
 
-                            pass.Parameters.Add(new ParameterInfo(p.Name, GetType(p.Type)));
+                            pass.Parameters.Add(new ParameterInfo(p.Name, p.Name, GetType(p.Type)));
                         }
 
                         int calcLayoutSize(TypeReference typeRef)
