@@ -148,7 +148,7 @@ namespace engenious.Content.Pipeline
             {
                 typeDefinition.NestedTypes.Add(t);
 
-                typeDefinition.AddAutoProperty(MethodModifiers.Public, t, tname);
+                typeDefinition.AddAutoProperty(MethodModifiers.Public, t, tname, initialValue: $"new ()");
             }
 
             return (settings, typeDefinition);
@@ -325,31 +325,36 @@ namespace engenious.Content.Pipeline
             var additionalSb = new StringBuilder();
             foreach (var (name, setting) in settings.Settings)
             {
+                var defaultValueExpr = setting.DefaultValue is null
+                    ? null
+                    : (CodeExpressionDefinition)setting.DefaultValue;
                 var nestedProperty = nestedSettings is null
                         ? Array.Empty<(string name, EffectSettings setting)>()
                     : nestedSettings.Where(x => x.setting.Settings.ContainsKey(name)).ToArray();
-                additionalSb.AppendLine(AdditionalLineString(setting, name));
+                additionalSb.Append(AdditionalLineString(setting, name) + "\\n");
                 const string getOnly = "Gets";
                 const string getOrSetOnly = "Gets or sets";
                 var settingsType = ExtractSettingType(setting.Type);
 
-                string comment = $"/// {(nestedProperty.Length > 1 ? getOnly : getOrSetOnly)} the {name} setting.";
+                string comment = $"/// <summary>{(nestedProperty.Length > 1 ? getOnly : getOrSetOnly)} the {name} setting.</summary>";
 
                 if (nestedProperty.Length == 0)
                 {
-                    tp.AddAutoProperty(MethodModifiers.Public, settingsType, name, comment);
+                    tp.AddAutoProperty(MethodModifiers.Public, settingsType, name, comment, initialValue: defaultValueExpr);
                 }
                 else
                 {
-                    var setterBodySb = new StringBuilder();
-                    setterBodySb.AppendLine($"_{name} = value;");
+                    var setterBodySb = new ExpressionBuilder();
+                    if (nestedProperty.Length > 1)
+                        setterBodySb.Append($"_{name} = value;");
+                    
                     foreach (var (npName, np) in nestedProperty)
                     {
                         if (np.Settings[name].Type != setting.Type || np.Settings[name].Kind != setting.Kind)
                         {
                             throw new InvalidOperationException();
                         }
-                        setterBodySb.AppendLine($"{npName}.{name} = value;");
+                        setterBodySb.Append($"{npName}.{name} = value;");
                     }
 
                     PropertyMethodDefinition propGetterDef;
@@ -360,20 +365,21 @@ namespace engenious.Content.Pipeline
                     }
                     else
                     {
+                        var field = new FieldDefinition(GenericModifiers.Private, settingsType, $"_{name}", InitialValue: defaultValueExpr);
+                        tp.Fields.Add(field);
                         propGetterDef = new ImplementedPropertyMethodDefinition(
-                            new MethodBodyDefinition($"_{name}"), false);
+                            new MethodBodyDefinition(field.Name), false);
                     }
 
                     var propSetter =
-                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(setterBodySb.ToString()),
+                        new ImplementedPropertyMethodDefinition(new MethodBodyDefinition(setterBodySb.ToBlockExpression()),
                             true);
 
                     var prop = new PropertyDefinition(MethodModifiers.Public, settingsType, name, propGetterDef, propSetter,GetterModifiers: nestedProperty.Length == 1 ? MethodModifiers.None : MethodModifiers.Private, Comment: comment);
                     tp.Properties.Add(prop);
                 }
             }
-
-            var toStringBody = new MethodBodyDefinition($"return $\"{additionalSb.ToString()}\"");
+            var toStringBody = new MethodBodyDefinition($"$\"{additionalSb}\"\n");
 
             var toString = new ImplementedMethodDefinition(new SignatureDefinition(
                 MethodModifiers.Public, TypeSystem.String, "ToCode",
