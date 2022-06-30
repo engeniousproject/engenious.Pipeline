@@ -27,7 +27,8 @@ namespace engenious.Content.Serialization
             writer.Write(value.Kernings.Count);
             foreach (var kerning in value.Kernings)
             {
-                writer.Write(kerning.Key);
+                writer.Write(kerning.Key.First);
+                writer.Write(kerning.Key.Second);
                 writer.Write(kerning.Value);
             }
             writer.Write(value.CharacterMap.Count);
@@ -51,7 +52,7 @@ namespace engenious.Content.Serialization
         ///     Initializes a new instance of the <see cref="SpriteFontTypeWriter"/> class.
         /// </summary>
         public SpriteFontTypeWriter()
-            : base(1)
+            : base(2)
         {
         }
     }

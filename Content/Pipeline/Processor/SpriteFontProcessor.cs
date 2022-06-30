@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using engenious.Content;
 using engenious.Content.Pipeline;
 using engenious.Content.Serialization;
@@ -149,12 +150,12 @@ namespace engenious.Pipeline
             compiled.DefaultCharacter = input.DefaultCharacter;
             compiled.FontType = input.FontType;
 
-            var glyphs = new Dictionary<uint, GlyphSlot>();
+            var glyphs = new Dictionary<Rune, GlyphSlot>();
 
             var characters = input.CharacterRegions.SelectMany(
-                r => r.GetCharacters().Select(c => (characterRange: c, glyphIndex: face.GetCharIndex(c)))).Where(x=>x.glyphIndex != 0).ToList();
+                r => r.GetCharacters().Select(c => (characterRange: c, glyphIndex: face.GetCharIndex(unchecked((uint)c.Value)))).Where(x=>x.glyphIndex != 0)).ToList();
 
-            var bitmaps = new List<(char character, BitmapData? bmpData, float advance, GlyphMetrics metrics)>();
+            var bitmaps = new List<(Rune character, BitmapData? bmpData, float advance, GlyphMetrics metrics)>();
 
             compiled.LineSpacing = (float)face.Size.Metrics.Height / fontPreScale;
             compiled.BaseLine = (float)face.Size.Metrics.Ascender / fontPreScale;
@@ -177,7 +178,7 @@ namespace engenious.Pipeline
                     {
                         var kerning = face.GetKerning(l.glyphIndex, r.glyphIndex, KerningMode.Default);
                         if (kerning == default(FTVector26Dot6)) continue;
-                        compiled.Kernings[l.characterRange<<16|r.characterRange] = (float)kerning.X / fontPreScale;
+                        compiled.Kernings[new RunePair(l.characterRange, r.characterRange)] = (float)kerning.X / fontPreScale;
                     }
                 }
 
@@ -349,7 +350,7 @@ namespace engenious.Pipeline
             return scale;
         }
         
-        private static void CreateSdfFont(SpriteFontType fontType, GlyphSlot glyph, uint glyphIndex, ref int totalWidth, List<(char, BitmapData?, float, GlyphMetrics)> bitmaps, char character, ref int maxWidth,
+        private static void CreateSdfFont(SpriteFontType fontType, GlyphSlot glyph, uint glyphIndex, ref int totalWidth, List<(Rune, BitmapData?, float, GlyphMetrics)> bitmaps, Rune character, ref int maxWidth,
             ref int maxHeight, int fontSize)
         {
             
@@ -438,7 +439,7 @@ namespace engenious.Pipeline
             totalWidth += msdf.Bitmap.Width;
         }
 
-        private static void CreateBitmapFont(GlyphSlot glyph, ref int totalWidth, List<(char, BitmapData?, float, GlyphMetrics)> bitmaps, char character, ref int maxWidth,
+        private static void CreateBitmapFont(GlyphSlot glyph, ref int totalWidth, List<(Rune, BitmapData?, float, GlyphMetrics)> bitmaps, Rune character, ref int maxWidth,
             ref int maxHeight)
         {
             glyph.OwnBitmap();

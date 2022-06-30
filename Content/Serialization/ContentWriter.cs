@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using engenious.Graphics;
 
 namespace engenious.Content.Serialization
@@ -198,6 +199,15 @@ namespace engenious.Content.Serialization
             Write(color.G);
             Write(color.B);
             Write(color.A);
+        }
+
+        /// <summary>
+        ///     Write a single <see cref="Rune"/> to this stream. The current position of the stream is advanced by 32 byte.
+        /// </summary>
+        /// <param name="rune">The rune to write.</param>
+        public void Write(Rune rune)
+        {
+            Write(rune.Value);
         }
     }
 }

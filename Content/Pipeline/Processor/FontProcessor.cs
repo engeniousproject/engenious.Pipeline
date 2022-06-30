@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Text;
 using engenious.Content.Serialization;
 using engenious.Graphics;
 
@@ -17,14 +18,14 @@ namespace engenious.Content.Pipeline
         /// </summary>
         public CompiledSpriteFont()
         {
-            Kernings = new Dictionary<int, float>();
-            CharacterMap = new Dictionary<char, FontCharacter>();
+            Kernings = new Dictionary<RunePair, float>();
+            CharacterMap = new Dictionary<Rune, FontCharacter>();
 
             Texture = null!;
         }
 
-        internal readonly Dictionary<int, float> Kernings;
-        internal readonly Dictionary<char, FontCharacter> CharacterMap;
+        internal readonly Dictionary<RunePair, float> Kernings;
+        internal readonly Dictionary<Rune, FontCharacter> CharacterMap;
         internal TextureContent Texture;
         internal SpriteFontType FontType;
 
@@ -32,7 +33,7 @@ namespace engenious.Content.Pipeline
         ///     Gets or sets the default character of the sprite font.
         /// </summary>
         /// <remarks><c>null</c> to use no default character.</remarks>
-        public char? DefaultCharacter { get; set; }
+        public Rune? DefaultCharacter { get; set; }
 
         /// <summary>
         ///     Gets or sets a value indicating the vertical spacing between lines.
@@ -101,7 +102,7 @@ namespace engenious.Content.Pipeline
                     throw new Exception("Invalid char count");
                 int charCount = int.Parse(lines[lineOffset++].Substring("chars count=".Length));
 
-                Dictionary<int, char> idCharMap = new Dictionary<int, char>();
+                var idCharMap = new Dictionary<int, Rune>();
                 for (int i = 0; i < charCount - 1; i++)
                 {
                     string line = lines[lineOffset];
@@ -113,7 +114,7 @@ namespace engenious.Content.Pipeline
                     int x = 0, y = 0, width = 0, height = 0;
                     int xOffset = 0, yOffset = 0;
                     int advance = 0;
-                    char letter = '\0';
+                    Rune? letter = null;
                     foreach (string pair in splt)
                     {
                         string[] pairSplit = pair.Split(new[] { '=' }, 2);
@@ -154,19 +155,19 @@ namespace engenious.Content.Pipeline
                         }
                         else if (key == "letter")
                         {
-                            letter = value.Trim().ToCharArray()[1];
+                            letter = new Rune(value.Trim().ToCharArray()[1]);
                         }
 
                     }
                     lineOffset++;
-                    if (idCharMap.ContainsKey(id))
+                    if (idCharMap.ContainsKey(id) || letter is null)
                         continue;
-                    idCharMap.Add(id, letter);
-                    FontCharacter fontChar = new FontCharacter(letter, new Rectangle(0, 0, font.Texture.Width, font.Texture.Height), new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), advance);
+                    idCharMap.Add(id, letter.Value);
+                    FontCharacter fontChar = new FontCharacter(letter.Value, new Rectangle(0, 0, font.Texture.Width, font.Texture.Height), new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), advance);
 
-                    if (font.CharacterMap.ContainsKey(letter))
+                    if (font.CharacterMap.ContainsKey(letter.Value))
                         continue;
-                    font.CharacterMap.Add(letter, fontChar);
+                    font.CharacterMap.Add(letter.Value, fontChar);
 
                 }
                 int kerningCount = int.Parse(lines[lineOffset++].Substring("kernings count=".Length));
@@ -177,7 +178,7 @@ namespace engenious.Content.Pipeline
                     if (!line.StartsWith("kerning "))
                         throw new Exception("Invalid kerning definition");
                     string[] splt = line.Substring("kerning ".Length).Split(new[]{' '},StringSplitOptions.None);
-                    char first = '\0', second = '\0';
+                    Rune? first = null, second = null;
                     int amount = 0;
                     foreach (string pair in splt)
                     {
@@ -197,7 +198,13 @@ namespace engenious.Content.Pipeline
                             amount = int.Parse(value);
                         }
                     }
-                    int kerningKey = SpriteFont.GetKerningKey(first, second);
+
+                    if (first is null || second is null)
+                    {
+                        continue;
+                    }
+                    
+                    var kerningKey = new RunePair(first.Value, second.Value);
                     if (!font.Kernings.ContainsKey(kerningKey))
                         font.Kernings.Add(kerningKey, amount);
                     lineOffset++;

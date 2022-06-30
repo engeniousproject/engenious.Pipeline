@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -77,9 +78,9 @@ namespace engenious.Pipeline
                         Style = parseStyle(element.InnerText);
                         break;
                     case "DefaultCharacter":
-                        if (element.InnerText.Length > 1)
-                            throw new FormatException("MultiChars not allowed");
-                        DefaultCharacter = element.InnerText.ToCharArray().FirstOrDefault();
+                        if (Rune.DecodeFromUtf16(element.InnerText, out var rune, out _) != OperationStatus.Done)
+                            throw new FormatException("Rune not recognized");
+                        DefaultCharacter = rune;
                         break;
                     case "CharacterRegions":
                         ParseCharacterRegion(element);
@@ -143,8 +144,7 @@ namespace engenious.Pipeline
                     }
                     if (start != null && end != null)
                     {
-                        CharacterRegions.Add(new CharacterRegion(start, end,
-                            DefaultCharacter ?? '*')); //TODO: default default character
+                        CharacterRegions.Add(new CharacterRegion(start, end, DefaultCharacter));
                     }
                 }
             }
@@ -233,7 +233,7 @@ namespace engenious.Pipeline
         ///     Gets the default character to fall back to for characters that are not available.
         /// </summary>
         /// <remarks><c>null</c> defaults to '*'</remarks> TODO: change on global default
-        public char? DefaultCharacter { get; }
+        public Rune? DefaultCharacter { get; }
 
         /// <summary>
         ///     Gets a list of the character regions this font contains.
@@ -249,18 +249,18 @@ namespace engenious.Pipeline
         private static int ParseAddress(string characterAddress)
         {
             if (characterAddress.StartsWith("0x"))
-                return Convert.ToInt32(characterAddress.Substring(2), 16);
+                return Convert.ToInt32(characterAddress[2..], 16);
             return int.Parse(characterAddress);
         }
 
-        private static char ToChar(int characterAddress)
+        private static Rune ToRune(int characterAddress)
         {
-            char[] value = Encoding.Unicode.GetChars(BitConverter.GetBytes(characterAddress));
+            //char[] value = Encoding.Unicode.GetChars(BitConverter.GetBytes(characterAddress));
 
-            return value[0];
+            return new Rune(characterAddress);
         }
 
-        private readonly char _defaultChar;
+        private readonly Rune _defaultChar;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="CharacterRegion"/> class.
@@ -268,7 +268,7 @@ namespace engenious.Pipeline
         /// <param name="start">The first character the range of characters starts at.</param>
         /// <param name="end">The end character the range of characters ends at(inclusive).</param>
         /// <param name="defaultChar">The default character to use if a specific character is not available.</param>
-        public CharacterRegion(string start, string end, char defaultChar = '*')
+        public CharacterRegion(string start, string end, Rune? defaultChar = null)
             : this(ParseAddress(start), ParseAddress(end), defaultChar)
         {
         }
@@ -279,22 +279,22 @@ namespace engenious.Pipeline
         /// <param name="start">The first character the range of characters starts at.</param>
         /// <param name="end">The end character the range of characters ends at(inclusive).</param>
         /// <param name="defaultChar">The default character to use if a specific character is not available.</param>
-        public CharacterRegion(int start, int end, char defaultChar = '*')
+        public CharacterRegion(int start, int end, Rune? defaultChar = null)
         {
             Start = start;
             End = end;
-            _defaultChar = defaultChar;
+            _defaultChar = defaultChar ?? new Rune('*');
         }
 
         /// <summary>
         ///     Gets an enumeration of all the characters in the character range.
         /// </summary>
         /// <returns>The enumeration of the characters in the range.</returns>
-        public IEnumerable<char> GetCharacters()
+        public IEnumerable<Rune> GetCharacters()
         {
             for (int i = Start; i <= End; i++)
             {
-                yield return ToChar(i);
+                yield return ToRune(i);
             }
         }
 
