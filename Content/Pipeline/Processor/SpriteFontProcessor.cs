@@ -151,22 +151,43 @@ namespace engenious.Pipeline
             compiled.FontType = input.FontType;
 
             var glyphs = new Dictionary<Rune, GlyphSlot>();
+            
+            
 
+            static (Color? color, uint glyphIndex)[] GetGlyphs(Face face, Palette? palette, uint baseGlyph)
+            {
+                if (baseGlyph == 0)
+                    return Array.Empty<(Color?, uint)>();
+                var lst = new List<(Color?, uint)> { (null, baseGlyph) };
+
+                foreach (var sub in new GlyphLayerEnumerable(face, palette, baseGlyph))
+                {
+                    lst.Add((sub.Color.IsForegroundColor ? null : new Color(sub.Color.R, sub.Color.G, sub.Color.B, sub.Color.A), sub.GlyphIndex));
+                }
+                
+                return lst.ToArray();
+            }
+
+            var paletteManager = new PaletteManager(face);
+
+            var palette = paletteManager.FirstOrDefault();
+            
             var characters = input.CharacterRegions.SelectMany(
-                r => r.GetCharacters().Select(c => (characterRange: c, glyphIndex: face.GetCharIndex(unchecked((uint)c.Value)))).Where(x=>x.glyphIndex != 0)).ToList();
+                r => r.GetCharacters().Select(c => (characterRange: c, glyphInfo: GetGlyphs(face, palette, face.GetCharIndex(unchecked((uint)c.Value))))).Where(x=> x.glyphInfo.Length != 0)).ToList();
 
-            var bitmaps = new List<(Rune character, BitmapData? bmpData, float advance, GlyphMetrics metrics)>();
+            var bitmaps = new List<(Rune character, List<(Color? glyphColor, BitmapData? bmpData, GlyphMetrics)> glyphData, float advance)>();
 
             compiled.LineSpacing = (float)face.Size.Metrics.Height / fontPreScale;
             compiled.BaseLine = (float)face.Size.Metrics.Ascender / fontPreScale;
             //Loading Glyphs, Calculate Kernings and Create Bitmaps
             int totalWidth=0,maxWidth=0,maxHeight=0;
+            int bitmapCount = 0;
             foreach (var l in characters)
             {
-                var (character, glyphIndex) = l;
+                var (character, glyphInfo) = l;
                 
                 //Load Glyphs
-                face.LoadGlyph(glyphIndex, LoadFlags.Color, LoadTarget.Normal);
+                face.LoadGlyph(glyphInfo[0].glyphIndex, LoadFlags.Color, LoadTarget.Normal);
                 var glyph = face.Glyph;
                 glyph.Tag = character;
                 glyphs.Add(character, glyph);
@@ -176,27 +197,45 @@ namespace engenious.Pipeline
                 {
                     foreach (var r in characters)
                     {
-                        var kerning = face.GetKerning(l.glyphIndex, r.glyphIndex, KerningMode.Default);
+                        var kerning = face.GetKerning(l.glyphInfo[0].glyphIndex, r.glyphInfo[0].glyphIndex, KerningMode.Default);
                         if (kerning == default(FTVector26Dot6)) continue;
                         compiled.Kernings[new RunePair(l.characterRange, r.characterRange)] = (float)kerning.X / fontPreScale;
                     }
                 }
 
-                //Create bitmaps
-                switch (input.FontType)
+                var bitmapDatas = new List<(Color? glyphColor, BitmapData? bmpData, GlyphMetrics metrics)>();
+                bool isFirst = true;
+                foreach (var (glyphColor, glyphIndex) in glyphInfo)
                 {
-                    case SpriteFontType.BitmapFont:
-                        CreateBitmapFont(glyph, ref totalWidth, bitmaps, character, ref maxWidth, ref maxHeight);
-                        break;
-                    case SpriteFontType.PSDF:
-                    case SpriteFontType.SDF:
-                    case SpriteFontType.MSDF:
-                    case SpriteFontType.MTSDF:
-                        CreateSdfFont(input.FontType, glyph, glyphIndex, ref totalWidth, bitmaps, character, ref maxWidth, ref maxHeight, input.Size);
+                    BitmapData? bitmapData = null;
+                    GlyphMetrics? metrics = null;
+                    //Create bitmaps
+                    switch (input.FontType)
+                    {
+                        case SpriteFontType.BitmapFont:
+                            bitmapData = CreateBitmapFont(glyph, glyphIndex, ref totalWidth, ref maxWidth, ref maxHeight);
+                            break;
+                        case SpriteFontType.PSDF:
+                        case SpriteFontType.SDF:
+                        case SpriteFontType.MSDF:
+                        case SpriteFontType.MTSDF:
+                            bitmapData = CreateSdfFont(input.FontType, glyph, glyphIndex, ref totalWidth, ref maxWidth, ref maxHeight, input.Size);
+                            break;
+                    }
+
+                    if (bitmapData is not null)
+                    {
+                        bitmapDatas.Add((glyphColor, bitmapData, metrics));
+                        bitmapCount++;
+                        isFirst = false;
+                    }
+                    else if (isFirst)
                         break;
                 }
+                if (bitmapDatas.Count > 0)
+                    bitmaps.Add((character, bitmapDatas, (float)glyph.Advance.X / fontPreScale));
             }
-            int cellCount = (int)Math.Ceiling(Math.Sqrt(bitmaps.Count));
+            int cellCount = (int)Math.Ceiling(Math.Sqrt(bitmapCount));
 
             int spacingX = 2, spacingY = 2;
             var target = new Bitmap(cellCount*(maxWidth+ spacingX),cellCount*(maxHeight + spacingY), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
@@ -222,42 +261,54 @@ namespace engenious.Pipeline
             {
                 var character = bmpKvp.character;
 
-                if (bmpKvp.bmpData == null)
+                var toAdd = new List<(Rectangle textureRegionPx, Vector2 offset, Vector2 size, Color? glyphColor)>();
+
+                foreach (var (glyphColor, bmpData, metrics) in bmpKvp.glyphData)
                 {
-                    compiled.CharacterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offsetX,offsetY,1,1),new Vector2((float)bmpKvp.metrics.HorizontalBearingX / fontPreScale,compiled.BaseLine - ((float)bmpKvp.metrics.HorizontalBearingY / fontPreScale)), new Vector2((float)bmpKvp.metrics.Width / fontPreScale, (float)bmpKvp.metrics.Height / fontPreScale), bmpKvp.advance));
-                    if (offsetX++ > target.Width)
+                    if (bmpData == null)
                     {
-                        offsetY += maxHeight + spacingY;
+                        toAdd.Add((new Rectangle(offsetX,offsetY,1,1),new Vector2((float)bmpKvp.metrics.HorizontalBearingX / fontPreScale,compiled.BaseLine - ((float)bmpKvp.metrics.HorizontalBearingY / fontPreScale)), new Vector2((float)bmpKvp.metrics.Width / fontPreScale, (float)bmpKvp.metrics.Height / fontPreScale), glyphColor));
+                        // compiled.CharacterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offsetX,offsetY,1,1),new Vector2((float)bmpKvp.metrics.HorizontalBearingX / fontPreScale,compiled.BaseLine - ((float)bmpKvp.metrics.HorizontalBearingY / fontPreScale)), new Vector2((float)bmpKvp.metrics.Width / fontPreScale, (float)bmpKvp.metrics.Height / fontPreScale), bmpKvp.advance));
+                        if (offsetX++ > target.Width)
+                        {
+                            offsetY += maxHeight + spacingY;
+                            offsetX = 0;
+                        }
+                        continue;
+                    }
+
+                    var bmp = bmpData.Value;
+                    var scale = bmp.Scale;
+                    var relScale = scale / MathF.Min(scale.X, scale.Y);
+                    int width = bmp.Width;
+                    int height = bmp.Height;
+                    if (offsetX + width + spacingX > target.Width)
+                    {
+                        offsetY += maxHeight + spacingX;
                         offsetX = 0;
                     }
-                    continue;
+                    //TODO divide width by 3?
+                    overlayG.DrawRectangle(Pens.Red, offsetX,offsetY,width,height);
+                    var destSize = new Vector2((float) bmpKvp.metrics.Width / fontPreScale,
+                        (float) bmpKvp.metrics.Height / fontPreScale) * scale;
+                    var destSizeDiff = destSize - new Vector2((float) bmpKvp.metrics.Width / fontPreScale,
+                        (float) bmpKvp.metrics.Height / fontPreScale);
+                    toAdd.Add((new Rectangle(offsetX,offsetY,width,height),new Vector2((float)bmpKvp.metrics.HorizontalBearingX / fontPreScale - destSizeDiff.X / 2,(compiled.BaseLine - (float)bmpKvp.metrics.HorizontalBearingY / fontPreScale - destSizeDiff.Y / 2)), destSize, glyphColor));
+
+                    unsafe
+                    {
+                        bmp.Copy((uint*) targetData.Scan0 + offsetX + offsetY * target.Width, offsetX, offsetY,
+                            target.Width, width, height);
+                    }
+                    offsetX += width + spacingX;
+                    bmp.Cleanup();
+                    
                 }
 
-                var bmp = bmpKvp.bmpData.Value;
-                var scale = bmp.Scale;
-                var relScale = scale / MathF.Min(scale.X, scale.Y);
-                int width = bmp.Width;
-                int height = bmp.Height;
-                if (offsetX + width + spacingX > target.Width)
-                {
-                    offsetY += maxHeight + spacingX;
-                    offsetX = 0;
-                }
-                //TODO divide width by 3?
-                overlayG.DrawRectangle(Pens.Red, offsetX,offsetY,width,height);
-                var destSize = new Vector2((float) bmpKvp.metrics.Width / fontPreScale,
-                    (float) bmpKvp.metrics.Height / fontPreScale) * scale;
-                var destSizeDiff = destSize - new Vector2((float) bmpKvp.metrics.Width / fontPreScale,
-                    (float) bmpKvp.metrics.Height / fontPreScale);
-                compiled.CharacterMap.Add(character, new FontCharacter(character,targetRectangle,new Rectangle(offsetX,offsetY,width,height),new Vector2((float)bmpKvp.metrics.HorizontalBearingX / fontPreScale - destSizeDiff.X / 2,(compiled.BaseLine - (float)bmpKvp.metrics.HorizontalBearingY / fontPreScale - destSizeDiff.Y / 2)), destSize, bmpKvp.advance));
+                var mainGlyph = new FontGlyph(targetRectangle, toAdd[0].textureRegionPx, toAdd[0].offset, toAdd[0].size, toAdd[0].glyphColor);
 
-                unsafe
-                {
-                    bmp.Copy((uint*) targetData.Scan0 + offsetX + offsetY * target.Width, offsetX, offsetY,
-                        target.Width, width, height);
-                }
-                offsetX += width + spacingX;
-                bmp.Cleanup();
+                var layers = toAdd.Count == 1 ? Array.Empty<FontGlyph>() : toAdd.Skip(1).Select(x => new FontGlyph(targetRectangle, x.textureRegionPx, x.offset, x.size, x.glyphColor)).ToArray();
+                compiled.CharacterMap.Add(character, new FontCharacter(character, mainGlyph, bmpKvp.advance, layers));
             }
             compiled.Texture = new TextureContent(game.GraphicsDevice,false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
             compiled.Spacing = input.Spacing;
@@ -350,7 +401,7 @@ namespace engenious.Pipeline
             return scale;
         }
         
-        private static void CreateSdfFont(SpriteFontType fontType, GlyphSlot glyph, uint glyphIndex, ref int totalWidth, List<(Rune, BitmapData?, float, GlyphMetrics)> bitmaps, Rune character, ref int maxWidth,
+        private static BitmapData? CreateSdfFont(SpriteFontType fontType, GlyphSlot glyph, uint glyphIndex, ref int totalWidth, ref int maxWidth,
             ref int maxHeight, int fontSize)
         {
             
@@ -373,8 +424,7 @@ namespace engenious.Pipeline
                 maxWidth = Math.Max(maxWidth, pxRange + 2);
                 maxHeight = Math.Max(maxHeight, pxRange + 2);
                 totalWidth += 2 + 1;
-                bitmaps.Add((character, (BitmapData?) null, (float)glyph.Advance.X / SDF_PRESCALE, glyph.Metrics));
-                return;
+                return null;
             }
             maxWidth = Math.Max(maxWidth, width + pxRange);
             maxHeight = Math.Max(maxHeight, height + pxRange);
@@ -433,17 +483,17 @@ namespace engenious.Pipeline
                     CopyMsdfToAtlas_BGRA(bmp, ptr, x, y, targetWidth, width, height, channelCount, pxRange);
                 var bmpData = new BitmapData(msdf.Bitmap.PixelData, del, () => msdf.Dispose(), msdf.Bitmap.Width, msdf.Bitmap.Height, scale);
                 
-                bitmaps.Add((character, bmpData, (float)glyph.Advance.X / SDF_PRESCALE, glyph.Metrics));
+                totalWidth += msdf.Bitmap.Width;
+                return bmpData;
             }
-
-            totalWidth += msdf.Bitmap.Width;
         }
 
-        private static void CreateBitmapFont(GlyphSlot glyph, ref int totalWidth, List<(Rune, BitmapData?, float, GlyphMetrics)> bitmaps, Rune character, ref int maxWidth,
+        private static BitmapData? CreateBitmapFont(GlyphSlot glyph, uint glyphIndex, ref int totalWidth, ref int maxWidth,
             ref int maxHeight)
         {
             glyph.OwnBitmap();
-            var glyphActual = glyph.GetGlyph();
+            glyph.Face.LoadGlyph(glyphIndex, LoadFlags.Monochrome, LoadTarget.Normal);
+            var glyphActual = glyph.Face.Glyph.GetGlyph();
             glyphActual.ToBitmap(RenderMode.Normal, default(FTVector26Dot6), false);
 
             var bmg = glyphActual.ToBitmapGlyph();
@@ -452,7 +502,7 @@ namespace engenious.Pipeline
                 totalWidth += 2 + 1;
                 maxWidth = Math.Max(maxWidth, 1 + 2);
                 maxHeight = Math.Max(maxHeight, 1 + 2);
-                bitmaps.Add((character, (BitmapData?) null, (float)glyph.Advance.X, glyph.Metrics));
+                return null;
             }
             else
             {
@@ -473,7 +523,7 @@ namespace engenious.Pipeline
                     };
                     var bmpData = new BitmapData((void*) bmp.Buffer, del, () => bmp.Dispose(), bmp.Width, bmp.Rows, Vector2.One);
                 
-                    bitmaps.Add((character, bmpData, (float)glyph.Advance.X, glyph.Metrics));
+                    return bmpData;
                 }
             }
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using engenious.Content.Pipeline;
+using engenious.Graphics;
 
 namespace engenious.Content.Serialization
 {
@@ -9,6 +10,19 @@ namespace engenious.Content.Serialization
     [ContentTypeWriter]
     public class SpriteFontTypeWriter : ContentTypeWriter<CompiledSpriteFont>
     {
+        private void Write(ContentWriter writer, FontGlyph glyph)
+        {
+            writer.Write(glyph.TextureRegion.X);
+            writer.Write(glyph.TextureRegion.Y);
+            writer.Write(glyph.TextureRegion.Width);
+            writer.Write(glyph.TextureRegion.Height);
+            
+            writer.Write(glyph.Offset);
+            writer.Write(glyph.Size);
+            writer.Write(glyph.Color is not null);
+            if (glyph.Color is not null)
+                writer.Write(glyph.Color.Value);
+        }
         /// <inheritdoc />
         public override void Write(ContentWriter writer, CompiledSpriteFont? value)
         {
@@ -35,13 +49,11 @@ namespace engenious.Content.Serialization
             foreach (var character in value.CharacterMap)
             {
                 writer.Write(character.Key);
-                writer.Write(character.Value.Offset);
-                writer.Write(character.Value.Size);
-                writer.Write(character.Value.TextureRegion.X);
-                writer.Write(character.Value.TextureRegion.Y);
-                writer.Write(character.Value.TextureRegion.Width);
-                writer.Write(character.Value.TextureRegion.Height);
                 writer.Write(character.Value.Advance);
+                Write(writer, character.Value.Glyph);
+                writer.Write(character.Value.GlyphLayers.Length);
+                foreach(var layer in character.Value.GlyphLayers)
+                    Write(writer, layer);
             }
         }
 

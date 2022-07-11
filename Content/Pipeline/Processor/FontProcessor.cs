@@ -163,7 +163,9 @@ namespace engenious.Content.Pipeline
                     if (idCharMap.ContainsKey(id) || letter is null)
                         continue;
                     idCharMap.Add(id, letter.Value);
-                    FontCharacter fontChar = new FontCharacter(letter.Value, new Rectangle(0, 0, font.Texture.Width, font.Texture.Height), new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), advance);
+                    var glyph = new FontGlyph(new Rectangle(0, 0, font.Texture.Width, font.Texture.Height),
+                        new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), null);
+                    FontCharacter fontChar = new FontCharacter(letter.Value, glyph, advance, Array.Empty<FontGlyph>());
 
                     if (font.CharacterMap.ContainsKey(letter.Value))
                         continue;
