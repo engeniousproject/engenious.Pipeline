@@ -17,7 +17,7 @@
         <None Include="LICENSE" Pack="true" PackagePath="" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="engenious.SharpFont" Version="4.0.2" />
+        <PackageReference Include="engenious.SharpFont" Version="4.0.5" />
         <PackageReference Include="engenious.SharpFont.Dependencies" Version="1.0.0" />
         <!--        <PackageReference Include="SharpFontStandard" Version="4.0.1" />-->
         <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
