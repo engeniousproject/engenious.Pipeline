@@ -19,9 +19,7 @@ namespace engenious.Content.Serialization
             
             writer.Write(glyph.Offset);
             writer.Write(glyph.Size);
-            writer.Write(glyph.Color is not null);
-            if (glyph.Color is not null)
-                writer.Write(glyph.Color.Value);
+            writer.Write(glyph.ColorIndex);
         }
         /// <inheritdoc />
         public override void Write(ContentWriter writer, CompiledSpriteFont? value)
@@ -54,6 +52,14 @@ namespace engenious.Content.Serialization
                 writer.Write(character.Value.GlyphLayers.Length);
                 foreach(var layer in character.Value.GlyphLayers)
                     Write(writer, layer);
+            }
+            
+            writer.Write(value.Palettes.Length);
+            foreach (var palette in value.Palettes)
+            {
+                writer.Write(palette.Colors.Length);
+                foreach (var c in palette.Colors)
+                    writer.Write(c);
             }
         }
 

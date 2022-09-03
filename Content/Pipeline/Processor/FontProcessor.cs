@@ -22,6 +22,7 @@ namespace engenious.Content.Pipeline
             CharacterMap = new Dictionary<Rune, FontCharacter>();
 
             Texture = null!;
+            Palettes = Array.Empty<FontPalette>();
         }
 
         internal readonly Dictionary<RunePair, float> Kernings;
@@ -49,6 +50,11 @@ namespace engenious.Content.Pipeline
         ///     Gets or sets a value indicating the base line position within the font.
         /// </summary>
         public float BaseLine { get; set; }
+        
+        /// <summary>
+        ///     Gets or sets the palettes for this font.
+        /// </summary>
+        public FontPalette[] Palettes { get; set; }
     }
 
     /// <summary>
@@ -164,7 +170,7 @@ namespace engenious.Content.Pipeline
                         continue;
                     idCharMap.Add(id, letter.Value);
                     var glyph = new FontGlyph(new Rectangle(0, 0, font.Texture.Width, font.Texture.Height),
-                        new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), null);
+                        new Rectangle(x, y, width, height), new Vector2(xOffset, yOffset), new Vector2(width,height), -1);
                     FontCharacter fontChar = new FontCharacter(letter.Value, glyph, advance, Array.Empty<FontGlyph>());
 
                     if (font.CharacterMap.ContainsKey(letter.Value))
