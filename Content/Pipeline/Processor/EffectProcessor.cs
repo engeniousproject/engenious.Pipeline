@@ -149,7 +149,7 @@ namespace engenious.Content.Pipeline
                 typeDefinition.NestedTypes.Add(t);
 
                 typeDefinition.AddAutoProperty(MethodModifiers.Public, t, tname, initialValue: $"new ()",
-                    comment: $"$/// <summary>Gets the {tname} settings.</summary>");
+                    comment: $"/// <summary>Gets the {tname} settings.</summary>");
             }
 
             return (settings, typeDefinition);
