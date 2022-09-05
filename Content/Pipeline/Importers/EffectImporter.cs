@@ -8,6 +8,7 @@ using System.Xml;
 using System.Xml.Linq;
 using engenious.Graphics;
 using engenious.Content.CodeGenerator;
+using engenious.Pipeline.Helper;
 
 namespace engenious.Content.Pipeline
 {
@@ -906,8 +907,8 @@ namespace engenious.Content.Pipeline
         /// <param name="fullName">The full name of the parameter.</param>
         /// <param name="name">The name of the parameter.</param>
         /// <param name="type">The type of the parameter.</param>
-        public ParameterInfo(string fullName, string name, Type type)
-            : this(fullName, name, new TypeReference(type.Namespace, type.Name))
+        public ParameterInfo(string fullName, string name, (Type type, bool nullable) type)
+            : this(fullName, name, type.ToTypeReference())
         {
         }
 
@@ -974,7 +975,7 @@ namespace engenious.Content.Pipeline
         /// <param name="name">The name of the parameter.</param>
         /// <param name="type">The type of the parameter.</param>
         /// <param name="offset">The offset inside the struct.</param>
-        public StructParameterInfo(string attributeName, string name, Type type, int offset)
+        public StructParameterInfo(string attributeName, string name, (Type type, bool nullable) type, int offset)
             : base(attributeName, name, type)
         {
             Offset = offset;
@@ -1027,7 +1028,7 @@ namespace engenious.Content.Pipeline
         /// <param name="name">The name of the parameter.</param>
         /// <param name="type">The type of the parameter.</param>
         /// <param name="offset">The offset inside the array.</param>
-        public ArrayParameterInfo(string attributeName, string name, Type type, int offset)
+        public ArrayParameterInfo(string attributeName, string name, (Type type, bool nullable) type, int offset)
             : base(attributeName, name, type)
         {
             Offset = offset;
