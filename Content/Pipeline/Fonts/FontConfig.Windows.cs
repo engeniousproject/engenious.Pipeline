@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -71,16 +71,25 @@ namespace engenious.Pipeline
 
         #region implemented abstract members of FontConfig
 
+        private static string StripVerticalName(string familyName)
+        {
+            if (familyName.Length > 1 && familyName[0] == '@')
+            {
+                return familyName.Substring(1);
+            }
+
+            return familyName;
+        }
         /// <inheritdoc />
         public override bool GetFontFile(string fontName, int fontSize, FontStyle style, out string? fileName)
         {
             fileName = null;
 
-            var fonts = FontFamily.Families;
+            bool res = Gdip.TryCreateFontFamily(fontName, out var fontFamily);
 
-            Font fnt = new Font(fontName, fontSize, style, GraphicsUnit.Point);
-
-            var names = GetFontNames(fnt);
+            var hfont = Gdip.CreateHFont(fontFamily, fontSize, style);
+            
+            var names = GetFontNames(hfont);
             foreach (var name in names)
             {
                 if (name.Name == null)
@@ -89,19 +98,19 @@ namespace engenious.Pipeline
                     break;
             }
             //Check if requested Font != Default Font
-            return fnt.OriginalFontName == FontFamily.GenericSansSerif.Name || fnt.OriginalFontName == fnt.Name;
+            return res; //fnt.OriginalFontName == FontFamily.GenericSansSerif.Name || fnt.OriginalFontName == fnt.Name;
         }
 
-        private List<NameRecord> GetFontNames(Font font)
-        {
-            return GetFontNames(font.ToHfont());
-        }
+        // private List<NameRecord> GetFontNames(Font font)
+        // {
+        //     return GetFontNames(font.ToHfont());
+        // }
         private List<NameRecord> GetFontNames(IntPtr hFont)
         {
             var fontNames = new List<NameRecord>();
             IntPtr dc = GetDC(IntPtr.Zero);
 
-            SelectObject(dc, hFont);
+            var res = SelectObject(dc, hFont);
 
             using (BinaryReader br = new BinaryReader(new MemoryStream(LoadFontMetricsNameTable(dc))))
             {

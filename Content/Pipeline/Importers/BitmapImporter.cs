@@ -1,22 +1,21 @@
 ﻿using System;
-using System.Drawing;
-
+using SixLabors.ImageSharp;
 namespace engenious.Content.Pipeline
 {
     /// <summary>
-    ///     <see cref="ContentImporter{T}"/> used to import <see cref="Bitmap"/> files from(.bmp, .jpg, .png).
+    ///     <see cref="ContentImporter{T}"/> used to import <see cref="Image"/> files from(.bmp, .jpg, .png).
     /// </summary>
     [ContentImporter(".bmp", ".jpg", ".png", DisplayName = "Bitmap Importer", DefaultProcessor = "BitmapProcessor")]
-    public class BitmapImporter : ContentImporter<Bitmap>
+    public class BitmapImporter : ContentImporter<Image>
     {
         /// <inheritdoc />
-        public override Bitmap? Import(string filename, ContentImporterContext context)
+        public override Image? Import(string filename, ContentImporterContext context)
         {
             //if (!System.IO.File.Exists(filename))
             //    return null;
             try
             {
-                return new Bitmap(filename);
+                return Image.Load(ImageSharpHelper.Config, filename);
             }
             catch (Exception ex)
             {

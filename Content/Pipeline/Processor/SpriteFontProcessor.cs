@@ -19,6 +19,11 @@ using MsdfGen;
 using OpenTK.Graphics.OpenGL4;
 using SharpFont;
 using SharpFont.Cache;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace engenious.Pipeline
 {
@@ -47,7 +52,7 @@ namespace engenious.Pipeline
                 Scale = scale;
             }
 
-            public delegate void CopyDelegate(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth,
+            public delegate void CopyDelegate(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth,
                 int width, int height);
 
             public int Width { get; }
@@ -57,7 +62,7 @@ namespace engenious.Pipeline
             public Vector2 Scale { get; }
 
 
-            public void Copy(uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
+            public void Copy(Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
             {
                 _copy(this, targetPtr, offsetX, offsetY, targetWidth, width, height);
             }
@@ -68,35 +73,34 @@ namespace engenious.Pipeline
             }
         }
 
-        private static unsafe Bitmap testRenderMTSDF(IntPtr pixels, int width, int height)
+        private static unsafe Image<Rgba32> testRenderMTSDF(IntPtr pixels, int width, int height)
         {
             static byte median(byte r, byte g, byte b)
             {
                 return Math.Max(Math.Min(r, g), Math.Min(Math.Max(r, g), b));
             }
 
-            var outImg = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            var outImg = new Image<Rgba32>(width, height);
 
-            var outImgData = outImg.LockBits(new System.Drawing.Rectangle(new System.Drawing.Point(), outImg.Size),
-                ImageLockMode.WriteOnly, outImg.PixelFormat);
+            var memGroup = outImg.GetPixelMemoryGroup();
             
             Vector2 msdfUnit = new Vector2(4) / new Vector2(width, height);
             byte* inputPtr = (byte*) pixels;
-            byte* outputPtr = (byte*) outImgData.Scan0;
-            for (int y = 0; y < height; y++)
+            for (int y = 0; y < memGroup.Count; y++)
             {
-                for (int x = 0; x < width; x++)
+                var row = memGroup[y].Span;
+                for (int x = 0; x < row.Length; x++)
                 {
                     int index = (y * width + x) * 4;
                     var sigDist = median(inputPtr[index + 2], inputPtr[index + 1], inputPtr[index + 0]) / 255.0 - 0.5;
                     byte opacity = (byte)(Math.Clamp(sigDist + 0.5, 0.0, 1.0) * 255);
-                    outputPtr[index + 0] = 255;
-                    outputPtr[index + 1] = 255;
-                    outputPtr[index + 2] = 255;
-                    outputPtr[index + 3] = opacity;
+                    row[x] = new Rgba32(255, 255, 255, opacity);
+                    // outputPtr[index + 0] = 255;
+                    // outputPtr[index + 1] = 255;
+                    // outputPtr[index + 2] = 255;
+                    // outputPtr[index + 3] = opacity;
                 }
             }
-            outImg.UnlockBits(outImgData);
             return outImg;
         }
         
@@ -254,23 +258,12 @@ namespace engenious.Pipeline
             int cellCount = (int)Math.Ceiling(Math.Sqrt(bitmapCount));
 
             int spacingX = 2, spacingY = 2;
-            var target = new Bitmap(cellCount*(maxWidth+ spacingX),cellCount*(maxHeight + spacingY), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            var target = new Image<Rgba32>(cellCount*(maxWidth+ spacingX), cellCount*(maxHeight + spacingY));
             var targetRectangle = new Rectangle(0, 0, target.Width, target.Height);
-            var targetData = target.LockBits(new System.Drawing.Rectangle(0, 0, target.Width, target.Height), ImageLockMode.WriteOnly, target.PixelFormat);
             int offsetX = 0,offsetY=0;
+            target.Mutate((x) => x.BackgroundColor(SixLabors.ImageSharp.Color.Transparent));
 
-            unsafe
-            {
-                var bPtr = (int*)targetData.Scan0;
-                for (int i = 0; i < target.Height * targetData.Width; i++,bPtr++)
-                {
-                    *bPtr = 0;
-                }
-            }
-
-            var overlay = new Bitmap(target.Width, target.Height);
-            
-            using var overlayG = System.Drawing.Graphics.FromImage(overlay);
+            var overlay = new Image<Rgba32>(target.Width, target.Height);
 
             //Create Glyph Atlas
             foreach (var bmpKvp in bitmaps)
@@ -304,7 +297,10 @@ namespace engenious.Pipeline
                         offsetX = 0;
                     }
                     //TODO divide width by 3?
-                    overlayG.DrawRectangle(Pens.Red, offsetX,offsetY,width,height);
+                    
+                    overlay.Mutate((x) => 
+                                       x.Draw(SixLabors.ImageSharp.Color.Red, 1f, new SixLabors.ImageSharp.RectangleF(offsetX, offsetY, width, height)));
+                    
                     var destSize = new Vector2((float) metrics.Width / fontPreScale,
                         (float) metrics.Height / fontPreScale) * scale;
                     var destSizeDiff = destSize - new Vector2((float) metrics.Width / fontPreScale,
@@ -313,7 +309,10 @@ namespace engenious.Pipeline
 
                     unsafe
                     {
-                        bmp.Copy((uint*) targetData.Scan0 + offsetX + offsetY * target.Width, offsetX, offsetY,
+                        if (!target.DangerousTryGetSinglePixelMemory(out var mem))
+                            throw new InvalidOperationException();
+                        var span = mem.Span[(offsetX + offsetY * target.Width)..];
+                        bmp.Copy(span, offsetX, offsetY,
                             target.Width, width, height);
                     }
                     offsetX += width + spacingX;
@@ -326,7 +325,7 @@ namespace engenious.Pipeline
                 var layers = toAdd.Count == 1 ? Array.Empty<FontGlyph>() : toAdd.Skip(1).Select(x => new FontGlyph(targetRectangle, x.textureRegionPx, x.offset, x.size, x.glyphColorIndex)).ToArray();
                 compiled.CharacterMap.Add(character, new FontCharacter(character, mainGlyph, bmpKvp.advance, layers));
             }
-            compiled.Texture = new TextureContent(game.GraphicsDevice,false,1,targetData.Scan0,target.Width,target.Height,TextureContentFormat.Png,TextureContentFormat.Png);
+            compiled.Texture = new TextureContent(game.GraphicsDevice,false,1, target,TextureContentFormat.Png,TextureContentFormat.Png);
             compiled.Spacing = input.Spacing;
             compiled.DefaultCharacter = input.DefaultCharacter;
             compiled.Palettes = new FontPalette[paletteManager.Count];
@@ -559,20 +558,21 @@ namespace engenious.Pipeline
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyFTBitmapToAtlas_Mono(BitmapData bmp, uint* targetPtr,int offsetX,int offsetY,int targetWidth,int width,int height)
+        private static unsafe void CopyFTBitmapToAtlas_Mono(BitmapData bmp, Span<Rgba32> targetPtr,int offsetX,int offsetY,int targetWidth,int width,int height)
         {
             var bmpPtr = (byte*)bmp.Data;
             int subIndex = 0;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++, subIndex++,bmpPtr++)
+                for (int x = 0; x < width; x++, offset++, subIndex++,bmpPtr++)
                 {
                     if ((((*bmpPtr) >> subIndex) & 0x1) != 0)
-                        *targetPtr = 0xFFFFFFFF; 
+                        targetPtr[offset] = new Rgba32(0xFF, 0xFF, 0xFF, 0xFF); 
                     if (subIndex == 8)
                         subIndex = 0;
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
             }
         }
 
@@ -581,113 +581,118 @@ namespace engenious.Pipeline
 
         #region Copy Implementations
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyFTBitmapToAtlas_Gray4(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height, int padding)
+        private static unsafe void CopyFTBitmapToAtlas_Gray4(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height, int padding)
         {
             //TODO: implement
             var bmpPtr = (byte*)bmp.Data;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++, bmpPtr++)
+                for (int x = 0; x < width; x++, offset++, bmpPtr++)
                 {
                     byte value = *bmpPtr;
-                    *targetPtr = (uint)(value<<24) | 0xFFFFFFu; //value > 0 ? 255<< 24: 0;
+                    targetPtr[offset] = new Rgba32(0xFF, 0xFF, 0xFF, value); //value > 0 ? 255<< 24: 0;
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
                 bmpPtr += padding;
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyFTBitmapToAtlas_Gray(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
+        private static unsafe void CopyFTBitmapToAtlas_Gray(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
         {
             var bmpPtr = (byte*)bmp.Data;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++, bmpPtr++)
+                for (int x = 0; x < width; x++, offset++, bmpPtr++)
                 {
                     byte value = *bmpPtr;
-                    *targetPtr = (uint)(value<<24) | 0xFFFFFFu;
+                    targetPtr[offset] = new Rgba32(0xFF, 0xFF, 0xFF, value);
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyFTBitmapToAtlas_LcdRGB(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
+        private static unsafe void CopyFTBitmapToAtlas_LcdRGB(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
         {
             var bmpPtr = (byte*)bmp.Data;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++, bmpPtr+=3)
+                for (int x = 0; x < width; x++, offset++, bmpPtr+=3)
                 {
                     uint value = *(uint*)(bmpPtr) >> 8;
-                    *targetPtr = 0xFF000000 | value;
+                    targetPtr[offset] = new Rgba32(0xFF, 0xFF, value, 0xFF);
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
             }
         }
         //TODO: verify direction
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyFTBitmapToAtlas_LcdBGR(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
+        private static unsafe void CopyFTBitmapToAtlas_LcdBGR(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
         {
             var bmpPtr = (byte*)bmp.Data;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++, bmpPtr+=3)
+                for (int x = 0; x < width; x++, offset++, bmpPtr+=3)
                 {
                     uint value = *(uint*)(bmpPtr);
                     //A | R | G | B
-                    *targetPtr = 0xFF000000 | (value >> 24) | (value << 8) & 0xFF0000 | (value >> 8) & 0xFF;
+                    targetPtr[offset] = new Rgba32(value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF, 0xFF);
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyFTBitmapToAtlas_BGRA(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
+        private static unsafe void CopyFTBitmapToAtlas_BGRA(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height)
         {
             var bmpPtr = (uint*)bmp.Data;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++, bmpPtr++)
+                for (int x = 0; x < width; x++, offset++, bmpPtr++)
                 {
                     uint value = *bmpPtr;
                     //A | R | G | B
-                    *targetPtr = (value << 24) | (value >> 24) | (value << 8) & 0xFF0000 | (value >> 8) & 0xFF;
+                    targetPtr[offset] = new Rgba32((value >> 8) & 0xFF, (value >> 16) & 0xFF, (value >> 24), value << 24);
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
             }
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void CopyMsdfToAtlas_BGRA(BitmapData bmp, uint* targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height, int channelCount, int pxRange)
+        private static unsafe void CopyMsdfToAtlas_BGRA(BitmapData bmp, Span<Rgba32> targetPtr, int offsetX, int offsetY, int targetWidth, int width, int height, int channelCount, int pxRange)
         {
-            delegate*<float*, uint> getColor = null;
+            delegate*<float*, Rgba32> getColor = null;
 
             // width += pxRange;
             // height += pxRange;
-            static uint FloatToByte(float val)
+            static byte FloatToByte(float val)
             {
-                return (uint)Math.Clamp((int) (val * 256), 0, 255);
+                return (byte)Math.Clamp((int) (val * 256), 0, 255);
             }
             switch (channelCount)
             {
                 case 1:
                 {
-                    static uint GetArgb(float* sdf)
+                    static Rgba32 GetArgb(float* sdf)
                     {
                         var value = FloatToByte(*sdf);
-                        return (0xFF000000u | (value << 16) | (value << 8) | value);
+                        return new Rgba32(value, value, value, 0xFF);
                     }
                     getColor = &GetArgb;
                     break;
                 }
                 case 3:
                 {
-                    static uint GetArgb(float* sdf)
+                    static Rgba32 GetArgb(float* sdf)
                     {
                         var r = FloatToByte(*(sdf + 2));
                         var g = FloatToByte(*(sdf + 1));
                         var b = FloatToByte(*(sdf + 0));
-                        return (0xFF000000u | (r << 16) | (g << 8) | b);
+                        return new Rgba32(r, g, b, 0xFF);
                     }
 
                     getColor = &GetArgb;
@@ -695,13 +700,13 @@ namespace engenious.Pipeline
                 }
                 case 4:
                 {
-                    static uint GetArgb(float* sdf)
+                    static Rgba32 GetArgb(float* sdf)
                     {
                         var r = FloatToByte(*(sdf + 2));
                         var g = FloatToByte(*(sdf + 1));
                         var b = FloatToByte(*(sdf + 0));
                         var a = FloatToByte(*(sdf + 3));
-                        return ((a << 24) | (r << 16) | (g << 8) | b);
+                        return new Rgba32(r, g, b, a);
                     }
 
                     getColor = &GetArgb;
@@ -711,16 +716,17 @@ namespace engenious.Pipeline
                     throw new InvalidOperationException($"Channel count {channelCount} not supported!");
             }
             var bmpPtr = (float*)bmp.Data;
+            int offset = 0;
             for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < width; x++, targetPtr++)
+                for (int x = 0; x < width; x++, offset++)
                 {
                     //uint value = *bmpPtr;
                     int indexSrc = ((height - y - 1) * width) + x;
                     //A | R | G | B
-                    *targetPtr = getColor(&bmpPtr[indexSrc * channelCount]);
+                    targetPtr[offset] = getColor(&bmpPtr[indexSrc * channelCount]);
                 }
-                targetPtr += targetWidth - width;
+                offset += targetWidth - width;
             }
         }
         #endregion

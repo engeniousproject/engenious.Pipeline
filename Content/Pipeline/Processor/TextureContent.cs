@@ -8,6 +8,10 @@ using engenious.Content.Serialization;
 using engenious.Graphics;
 using engenious.Helper;
 using OpenTK.Graphics.OpenGL;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace engenious.Content.Pipeline
 {
@@ -50,6 +54,28 @@ namespace engenious.Content.Pipeline
         /// <param name="graphicsDevice">The graphics device used to load the texture and create mip maps with.</param>
         /// <param name="generateMipMaps"></param>
         /// <param name="mipMapCount">The number of mip maps to create.</param>
+        /// <param name="image">The bitmap input data.</param>
+        /// <param name="inputFormat">The input format of the texture.</param>
+        /// <param name="outputFormat">The format of the texture to use on GPU side.</param>
+        public TextureContent(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, Image image, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+            : this(graphicsDevice)
+        {
+            var ci = image.ToContinuousImage<Rgba32>();
+
+            if (!ci.DangerousTryGetSinglePixelMemory(out var mem))
+                throw new ArgumentException(nameof(image));
+            var sp = mem.Span;
+            CreateTexture(graphicsDevice, generateMipMaps, mipMapCount, ref sp.GetPinnableReference(), image.Width, image.Height, inputFormat, outputFormat);
+            
+            if (ci != image)
+                ci.Dispose();
+        }
+        /// <summary>
+        ///     Initializes a ne instance of the <see cref="TextureContent"/> class.
+        /// </summary>
+        /// <param name="graphicsDevice">The graphics device used to load the texture and create mip maps with.</param>
+        /// <param name="generateMipMaps"></param>
+        /// <param name="mipMapCount">The number of mip maps to create.</param>
         /// <param name="inputData">A pointer to the bitmap input data.</param>
         /// <param name="width">The width of the texture.</param>
         /// <param name="height">The height of the texture.</param>
@@ -61,13 +87,12 @@ namespace engenious.Content.Pipeline
             CreateTexture(graphicsDevice, generateMipMaps, mipMapCount, inputData, width, height, inputFormat, outputFormat);
         }
 
-        private void CreateTexture(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, IntPtr inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+        private bool SetupTexture(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount,
+            int width, int height, TextureContentFormat outputFormat)
         {
             Width = width;
             Height = height;
             Format = outputFormat;
-            bool hwCompressedInput = inputFormat == TextureContentFormat.DXT1 || inputFormat == TextureContentFormat.DXT3 || inputFormat == TextureContentFormat.DXT5;
-            bool hwCompressedOutput = outputFormat == TextureContentFormat.DXT1 || outputFormat == TextureContentFormat.DXT3 || outputFormat == TextureContentFormat.DXT5;
             graphicsDevice.ValidateUiGraphicsThread();
 
             _texture = GL.GenTexture();
@@ -87,7 +112,20 @@ namespace engenious.Content.Pipeline
                 else if (_graphicsDevice.DriverVersion == null || _graphicsDevice.DriverVersion.Major < 3)
                     throw new NotSupportedException("Can't generate MipMaps on this Hardware");
             }
+
+            return doGenerate;
+        }
+        private void uploadTexture(bool hwCompressedOutput, bool hwCompressedInput, IntPtr inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+        {
             GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, inputData);
+        }
+        private void uploadTexture<T>(bool hwCompressedOutput, bool hwCompressedInput, ref T inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+            where T:unmanaged
+        {
+            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, ref inputData);
+        }
+        private void PostPreprocessTexture(GraphicsDevice graphicsDevice, bool doGenerate, int mipMapCount)
+        {
             if (doGenerate)
             {
                 //TOODO non power of 2 Textures?
@@ -100,6 +138,23 @@ namespace engenious.Content.Pipeline
             PreprocessMipMaps(graphicsDevice);
             
             GL.DeleteTexture(_texture);
+        }
+        private void CreateTexture(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, IntPtr inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+        {
+            bool hwCompressedInput = inputFormat == TextureContentFormat.DXT1 || inputFormat == TextureContentFormat.DXT3 || inputFormat == TextureContentFormat.DXT5;
+            bool hwCompressedOutput = outputFormat == TextureContentFormat.DXT1 || outputFormat == TextureContentFormat.DXT3 || outputFormat == TextureContentFormat.DXT5;
+            var doGenerate = SetupTexture(graphicsDevice, generateMipMaps, mipMapCount, width, height, outputFormat);
+            uploadTexture(hwCompressedOutput, hwCompressedInput, inputData, width, height, inputFormat, outputFormat);
+            PostPreprocessTexture(graphicsDevice, doGenerate, mipMapCount);
+        }
+        private void CreateTexture<T>(GraphicsDevice graphicsDevice, bool generateMipMaps, int mipMapCount, ref T input, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
+            where T : unmanaged
+        {
+            bool hwCompressedInput = inputFormat == TextureContentFormat.DXT1 || inputFormat == TextureContentFormat.DXT3 || inputFormat == TextureContentFormat.DXT5;
+            bool hwCompressedOutput = outputFormat == TextureContentFormat.DXT1 || outputFormat == TextureContentFormat.DXT3 || outputFormat == TextureContentFormat.DXT5;
+            var doGenerate = SetupTexture(graphicsDevice, generateMipMaps, mipMapCount, width, height, outputFormat);
+            uploadTexture(hwCompressedOutput, hwCompressedInput, ref input, width, height, inputFormat, outputFormat);
+            PostPreprocessTexture(graphicsDevice, doGenerate, mipMapCount);
         }
 
         private void setDefaultTextureParameters()
@@ -132,14 +187,13 @@ namespace engenious.Content.Pipeline
                 }
                 else
                 {
-                    var bmp = new Bitmap(width,height);
+                    var bmp = new Image<Rgba32>(ImageSharpHelper.Config, width, height);
 
-                    var bmpData = bmp.LockBits(new System.Drawing.Rectangle(0,0,width,height),ImageLockMode.WriteOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
+                    if (!bmp.DangerousTryGetSinglePixelMemory(out var mem))
+                        throw new InvalidOperationException();
+                    var span = mem.Span;
                     GL.BindTexture(TextureTarget.Texture2D,_texture);
-                    GL.GetTexImage(TextureTarget.Texture2D,i,OpenTK.Graphics.OpenGL.PixelFormat.Bgra,PixelType.UnsignedByte,bmpData.Scan0);
-
-                    bmp.UnlockBits(bmpData);
+                    GL.GetTexImage(TextureTarget.Texture2D,i,OpenTK.Graphics.OpenGL.PixelFormat.Bgra,PixelType.UnsignedByte, ref span.GetPinnableReference());
 
                     MipMaps.Add(new TextureContentMipMap(width, height, Format, bmp));
 
@@ -190,7 +244,7 @@ namespace engenious.Content.Pipeline
     /// </summary>
     public class TextureContentMipMap
     {
-        private readonly Bitmap? _bitmap;
+        private readonly Image? _bitmap;
         private readonly byte[]? _data;
 
         /// <summary>
@@ -213,7 +267,7 @@ namespace engenious.Content.Pipeline
         /// <param name="height">The height of the mip map level.</param>
         /// <param name="format">The format of the mip map level.</param>
         /// <param name="data">The bitmap data of the mip map level.</param>
-        public TextureContentMipMap(int width, int height, TextureContentFormat format, Bitmap data)
+        public TextureContentMipMap(int width, int height, TextureContentFormat format, Image data)
             : this(width, height, format)
         {
             
@@ -264,10 +318,10 @@ namespace engenious.Content.Pipeline
                 switch (Format)
                 {
                     case TextureContentFormat.Png:
-                        _bitmap.Save(str, ImageFormat.Png);
+                        _bitmap.Save(str, new PngEncoder());
                         break;
                     case TextureContentFormat.Jpg:
-                        _bitmap.Save(str, ImageFormat.Jpeg);
+                        _bitmap.Save(str, new JpegEncoder());
                         break;
                 }
 

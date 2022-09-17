@@ -136,14 +136,14 @@ namespace engenious.Pipeline
         #region implemented abstract members of FontConfig
 
         /// <inheritdoc />
-        public override bool GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style,
+        public override bool GetFontFile(string fontName, int fontSize, FontStyle style,
             out string? fileName)
         {
             fileName = null;
             var config = FcInitLoadConfigAndFonts();
 
             var fontStyles = new List<string>();
-            foreach (var val in Enum.GetValues(typeof(System.Drawing.FontStyle)).OfType<System.Drawing.FontStyle>()
+            foreach (var val in Enum.GetValues(typeof(FontStyle)).OfType<FontStyle>()
                 .Skip(1))
             {
                 if (style.HasFlag(val))

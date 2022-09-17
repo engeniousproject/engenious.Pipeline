@@ -39,7 +39,7 @@ namespace engenious.Pipeline
         /// <param name="style">The style of the font file to search for.</param>
         /// <param name="fileName">The file name of the matching font file.</param>
         /// <returns>Whether a font file was found.</returns>
-        public abstract bool GetFontFile(string fontName, int fontSize, System.Drawing.FontStyle style,
+        public abstract bool GetFontFile(string fontName, int fontSize, FontStyle style,
             out string? fileName);
     }
 }

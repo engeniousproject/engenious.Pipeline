@@ -7,25 +7,14 @@ namespace engenious.Pipeline.Helper
     /// </summary>
     public static class DpiHelper
     {
-
-        private static readonly Bitmap DummyBitmap;
-        
-        private static readonly System.Drawing.Graphics G;
-
-        static DpiHelper()
-        {
-            DummyBitmap = new Bitmap(1,1);
-            G = System.Drawing.Graphics.FromImage(DummyBitmap);
-        }
-
         /// <summary>
         ///     Gets the graphics dpi resolution on the x axis.
         /// </summary>
-        public static float DpiX => G.DpiX;
+        public static float DpiX => 96; // TODO:
 
         /// <summary>
         ///     Gets the graphics dpi resolution on the y axis.
         /// </summary>
-        public static float DpiY => G.DpiY;
+        public static float DpiY => 96;
     }
 }

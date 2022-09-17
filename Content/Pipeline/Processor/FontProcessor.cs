@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.CompilerServices;
 using System.Text;
 using engenious.Content.Serialization;
 using engenious.Graphics;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace engenious.Content.Pipeline
 {
@@ -71,10 +74,9 @@ namespace engenious.Content.Pipeline
             {
                 CompiledSpriteFont font = new();
                 font.FontType = SpriteFontType.BitmapFont;
-                var text = new Bitmap(input.TextureFile);
-                var textData = text.LockBits(new System.Drawing.Rectangle(0,0,text.Width,text.Height),ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                font.Texture = new TextureContent(game.GraphicsDevice,false,1,textData.Scan0,text.Width,text.Height,TextureContentFormat.Png,TextureContentFormat.Png);
-                text.UnlockBits(textData);  
+                var text = Image.Load<Rgba32>(ImageSharpHelper.Config, input.TextureFile);
+
+                font.Texture = new TextureContent(game.GraphicsDevice, false, 1, text, TextureContentFormat.Png, TextureContentFormat.Png);
                 text.Dispose();
 
                 string[] lines = input.Content.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);

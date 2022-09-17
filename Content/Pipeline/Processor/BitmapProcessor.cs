@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using engenious.Content.Serialization;
+using SixLabors.ImageSharp;
 
 namespace engenious.Content.Pipeline
 {
@@ -11,17 +12,15 @@ namespace engenious.Content.Pipeline
     /// </summary>
     [ContentProcessor(DisplayName = "Bitmap Processor")]
 
-    public class BitmapProcessor : ContentProcessor<Bitmap, TextureContent,BitmapProcessorSettings>
+    public class BitmapProcessor : ContentProcessor<Image, TextureContent,BitmapProcessorSettings>
     {
         #region implemented abstract members of ContentProcessor
 
         /// <inheritdoc />
-        public override TextureContent Process(Bitmap input, string filename, ContentProcessorContext context)
+        public override TextureContent Process(Image input, string filename, ContentProcessorContext context)
         {
             var game = (IGame)context.Game;
-            var data = input.LockBits(new System.Drawing.Rectangle(0,0,input.Width,input.Height),ImageLockMode.ReadOnly,System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            TextureContent content = new TextureContent(game.GraphicsDevice,!_settings.AutoGenerateMipMaps,_settings.MipMapCount,data.Scan0,input.Width,input.Height,TextureContentFormat.Png,_settings.Format);
-            input.UnlockBits(data);
+            TextureContent content = new TextureContent(game.GraphicsDevice,!_settings.AutoGenerateMipMaps,_settings.MipMapCount,input,TextureContentFormat.Png,_settings.Format);
             return content;
         }
         #endregion
