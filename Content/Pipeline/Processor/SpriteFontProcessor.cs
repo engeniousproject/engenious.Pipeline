@@ -258,7 +258,7 @@ namespace engenious.Pipeline
             int cellCount = (int)Math.Ceiling(Math.Sqrt(bitmapCount));
 
             int spacingX = 2, spacingY = 2;
-            var target = new Image<Rgba32>(cellCount*(maxWidth+ spacingX), cellCount*(maxHeight + spacingY));
+            var target = new Image<Rgba32>(ImageSharpHelper.Config, cellCount*(maxWidth+ spacingX), cellCount*(maxHeight + spacingY));
             var targetRectangle = new Rectangle(0, 0, target.Width, target.Height);
             int offsetX = 0,offsetY=0;
             target.Mutate((x) => x.BackgroundColor(SixLabors.ImageSharp.Color.Transparent));
