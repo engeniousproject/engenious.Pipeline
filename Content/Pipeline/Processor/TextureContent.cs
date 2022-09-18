@@ -117,12 +117,12 @@ namespace engenious.Content.Pipeline
         }
         private void uploadTexture(bool hwCompressedOutput, bool hwCompressedInput, IntPtr inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
         {
-            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, inputData);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Rgba), PixelType.UnsignedByte, inputData);
         }
         private void uploadTexture<T>(bool hwCompressedOutput, bool hwCompressedInput, ref T inputData, int width, int height, TextureContentFormat inputFormat, TextureContentFormat outputFormat)
             where T:unmanaged
         {
-            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Bgra), PixelType.UnsignedByte, ref inputData);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, (hwCompressedOutput ? (OpenTK.Graphics.OpenGL.PixelInternalFormat)outputFormat : OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba), width, height, 0, (hwCompressedInput ? (OpenTK.Graphics.OpenGL.PixelFormat)inputFormat : OpenTK.Graphics.OpenGL.PixelFormat.Rgba), PixelType.UnsignedByte, ref inputData);
         }
         private void PostPreprocessTexture(GraphicsDevice graphicsDevice, bool doGenerate, int mipMapCount)
         {
@@ -193,7 +193,7 @@ namespace engenious.Content.Pipeline
                         throw new InvalidOperationException();
                     var span = mem.Span;
                     GL.BindTexture(TextureTarget.Texture2D,_texture);
-                    GL.GetTexImage(TextureTarget.Texture2D,i,OpenTK.Graphics.OpenGL.PixelFormat.Bgra,PixelType.UnsignedByte, ref span.GetPinnableReference());
+                    GL.GetTexImage(TextureTarget.Texture2D,i,OpenTK.Graphics.OpenGL.PixelFormat.Rgba,PixelType.UnsignedByte, ref span.GetPinnableReference());
 
                     MipMaps.Add(new TextureContentMipMap(width, height, Format, bmp));
 
