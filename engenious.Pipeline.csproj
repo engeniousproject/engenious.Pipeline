@@ -27,7 +27,7 @@
         <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta15" />
         <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
         <ProjectReference Include="..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj" Condition="Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
-        <PackageReference Include="engenious.Pipeline.Core" Version="0.7.0-alpha" Condition="!Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
+        <PackageReference Include="engenious.Pipeline.Core" Version="0.7.0.3-alpha" Condition="!Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
         <PackageReference Include="engenious" Version="0.7.0.1-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
