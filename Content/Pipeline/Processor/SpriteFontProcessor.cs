@@ -1,24 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using engenious.Content;
+
 using engenious.Content.Pipeline;
 using engenious.Content.Serialization;
 using engenious.Graphics;
-using engenious.Helper;
 using engenious.Pipeline.Helper;
+
 using MsdfGen;
-using OpenTK.Graphics.OpenGL4;
+
 using SharpFont;
-using SharpFont.Cache;
+
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -146,10 +142,58 @@ namespace engenious.Pipeline
             
             Library lib = new Library();
             var face = lib.NewFace(fontFile, 0);
-            
             var paletteManager = new PaletteManager(face);
             var fontPreScale = input.FontType == SpriteFontType.BitmapFont ? 1 : SDF_PRESCALE;
-            face.SetCharSize(new Fixed26Dot6(0), new Fixed26Dot6(input.Size * fontPreScale), (uint)DpiHelper.DpiX, (uint)DpiHelper.DpiY);
+
+            bool SetSize()
+            {
+                Fixed26Dot6 desiredYSize = input.Size * fontPreScale;
+                try
+                {
+                    face.SetCharSize(new Fixed26Dot6(0), desiredYSize, (uint)DpiHelper.DpiX, (uint)DpiHelper.DpiY);
+
+                }
+                catch (FreeTypeException e)
+                {
+                    if (e.Error == Error.InvalidPixelSize)
+                    {
+                        Fixed26Dot6 bestXSize = 0, bestYSize = 0;
+                        unsafe
+                        {
+                            bool magnify = true;
+                            Fixed26Dot6 minDistance = Fixed26Dot6.FromRawValue(int.MaxValue);
+                            foreach (var ftBitmap in face.AvailableSizes)
+                            {
+                                Fixed26Dot6 ySize = ftBitmap.NominalHeight;
+                                Fixed26Dot6 distance = ySize - desiredYSize;
+
+                                var absoluteDistance = distance < 0 ? (distance * -1) : distance;
+                                if ((magnify && distance >= 0) || absoluteDistance <= minDistance) {
+                                    magnify = distance < 0;
+                                    minDistance = absoluteDistance;
+                                    bestXSize = ftBitmap.NominalWidth;
+                                    bestYSize = ySize;
+                                }
+                            }
+                        }
+
+                        if (bestXSize == 0 && bestYSize == 0)
+                        {
+                            context.RaiseBuildMessage(filename, $"'{input.FontName}' has no determinable font size", BuildMessageEventArgs.BuildMessageType.Error);
+                            return false;
+                        }
+                        face.SetCharSize(bestXSize, bestYSize, 0, 0);
+
+                        var scale = bestXSize.ToDouble() / desiredYSize.ToDouble();
+                        fontPreScale = (float)(scale * (72.0 / 96.0));
+                    }
+                }
+
+                return true;
+            }
+
+            if (!SetSize())
+                return null;
 
             CompiledSpriteFont compiled = new CompiledSpriteFont();
             compiled.Spacing = input.Spacing;
@@ -197,18 +241,40 @@ namespace engenious.Pipeline
 
             var bitmaps = new List<(Rune character, List<(int glyphColorIndex, BitmapData? bmpData, GlyphMetrics)> glyphData, float advance)>();
 
-            compiled.LineSpacing = (float)face.Size.Metrics.Height / fontPreScale;
-            compiled.BaseLine = (float)face.Size.Metrics.Ascender / fontPreScale;
             //Loading Glyphs, Calculate Kernings and Create Bitmaps
             int totalWidth=0,maxWidth=0,maxHeight=0;
             int bitmapCount = 0;
+
+            var preloadedGlyphs = new List<(Rune characterRange, (int paletteIndex, uint glyphIndex)[] glyphInfo, GlyphSlot glyph)>();
+
             foreach (var l in characters)
             {
                 var (character, glyphInfo) = l;
                 
                 //Load Glyphs
                 face.LoadGlyph(glyphInfo[0].glyphIndex, LoadFlags.Color, LoadTarget.Normal);
-                var glyph = face.Glyph;
+
+                if (face.Glyph.Format == GlyphFormat.Bitmap)
+                {
+                    if (compiled.FontType != SpriteFontType.BitmapFont)
+                    {
+                        context.RaiseBuildMessage(filename, $"{filename}: Warning: Can not create {compiled.FontType} from font {face.FamilyName}, because it contains characters which have only bitmap font data! Falling back to bitmap font!", BuildMessageEventArgs.BuildMessageType.Warning);
+                        compiled.FontType = SpriteFontType.BitmapFont;
+                        input.FontType = SpriteFontType.BitmapFont;
+                        fontPreScale = 1f;
+                        if (!SetSize())
+                            return null;
+                    }
+                }
+                
+                preloadedGlyphs.Add((character, glyphInfo, face.Glyph));
+            }
+            compiled.LineSpacing = (float)face.Size.Metrics.Height / fontPreScale;
+            compiled.BaseLine = (float)face.Size.Metrics.Ascender / fontPreScale;
+            
+            foreach (var l in preloadedGlyphs)
+            {
+                var (character, glyphInfo, glyph) = l;
                 glyph.Tag = character;
                 glyphs.Add(character, glyph);
 
@@ -230,7 +296,7 @@ namespace engenious.Pipeline
                     BitmapData? bitmapData = null;
                     GlyphMetrics? metrics = null;
                     //Create bitmaps
-                    switch (input.FontType)
+                    switch (compiled.FontType)
                     {
                         case SpriteFontType.BitmapFont:
                             (bitmapData, metrics) = CreateBitmapFont(glyph, glyphIndex, ref totalWidth, ref maxWidth, ref maxHeight);
@@ -239,7 +305,7 @@ namespace engenious.Pipeline
                         case SpriteFontType.SDF:
                         case SpriteFontType.MSDF:
                         case SpriteFontType.MTSDF:
-                            (bitmapData, metrics) = CreateSdfFont(input.FontType, glyph, glyphIndex, ref totalWidth, ref maxWidth, ref maxHeight, input.Size);
+                            (bitmapData, metrics) = CreateSdfFont(compiled.FontType, glyph, glyphIndex, ref totalWidth, ref maxWidth, ref maxHeight, input.Size);
                             break;
                     }
 
@@ -340,26 +406,7 @@ namespace engenious.Pipeline
                 }
                 compiled.Palettes[i] = fontPalette;
             }
-            
-            
-            // if (input.FontType == SpriteFontType.MTSDF)
-            //     testRenderMTSDF(targetData.Scan0, target.Width, target.Height).Save("/home/julian/Projects/engenious.Full/test_render.png",ImageFormat.Png);
-            // target.UnlockBits(targetData);
-            //
-            // target.Save("/home/julian/Projects/engenious.Full/test.png",ImageFormat.Png);
-            //
-            //
-            //
-            // using var g = System.Drawing.Graphics.FromImage(target);
-            // foreach (var bmpKvp in bitmaps)
-            // {
-            //     g.DrawImage(overlay, new System.Drawing.Point());
-            // }
-            //
-            // //Saving files
-            // target.Save("/home/julian/Projects/engenious.Full/test_regions.png",ImageFormat.Png);
             target.Dispose();
-            //System.Diagnostics.Process.Start("test.png"); //TODO: Remove later
 
             return compiled;
         }
@@ -520,7 +567,7 @@ namespace engenious.Pipeline
             ref int maxHeight)
         {
             glyph.OwnBitmap();
-            glyph.Face.LoadGlyph(glyphIndex, LoadFlags.Monochrome, LoadTarget.Normal);
+            glyph.Face.LoadGlyph(glyphIndex, glyph.Face.HasColor ? LoadFlags.Color : LoadFlags.Monochrome, LoadTarget.Normal);
             var loadedGlyph = glyph.Face.Glyph;
             var glyphActual = loadedGlyph.GetGlyph();
             glyphActual.ToBitmap(RenderMode.Normal, default(FTVector26Dot6), false);
@@ -622,7 +669,7 @@ namespace engenious.Pipeline
                 for (int x = 0; x < width; x++, offset++, bmpPtr+=3)
                 {
                     uint value = *(uint*)(bmpPtr) >> 8;
-                    targetPtr[offset] = new Rgba32(0xFF, 0xFF, value, 0xFF);
+                    targetPtr[offset] = new Rgba32(0xFF, 0xFF, (byte)(value & 0xFF), 0xFF);
                 }
                 offset += targetWidth - width;
             }
@@ -639,7 +686,7 @@ namespace engenious.Pipeline
                 {
                     uint value = *(uint*)(bmpPtr);
                     //A | R | G | B
-                    targetPtr[offset] = new Rgba32(value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF, 0xFF);
+                    targetPtr[offset] = new Rgba32((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)((value >> 0) & 0xFF), 0xFF);
                 }
                 offset += targetWidth - width;
             }
@@ -656,7 +703,7 @@ namespace engenious.Pipeline
                 {
                     uint value = *bmpPtr;
                     //A | R | G | B
-                    targetPtr[offset] = new Rgba32((value >> 8) & 0xFF, (value >> 16) & 0xFF, (value >> 24), value << 24);
+                    targetPtr[offset] = new Rgba32((byte)((value >> 16) & 0xFF), (byte)((value >> 8) & 0xFF), (byte)((value >> 0) & 0xFF), (byte)((value >> 24) & 0xFF));
                 }
                 offset += targetWidth - width;
             }

@@ -19,9 +19,18 @@ namespace engenious.Pipeline
         #region implemented abstract members of ContentImporter
 
         /// <inheritdoc />
-        public override SpriteFontContent Import(string filename, ContentImporterContext context)
+        public override SpriteFontContent? Import(string filename, ContentImporterContext context)
         {
-            return new(filename);
+            try
+            {
+                return new(filename);
+            }
+            catch (FormatException e)
+            {
+                context.RaiseBuildMessage(filename, e.Message, BuildMessageEventArgs.BuildMessageType.Error);
+            }
+
+            return null;
         }
 
         #endregion

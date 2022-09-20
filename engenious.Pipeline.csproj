@@ -36,6 +36,11 @@
         <PackageReference Include="LiCo" Version="0.2.0.3-alpha" PrivateAssets="all" />
         <PackageReference Include="AssimpNet" Version="5.0.0-beta1" PrivateAssets="compile" />
     </ItemGroup>
+    <ItemGroup>
+      <Reference Include="SharpFont.FTTypes">
+        <HintPath>..\engenious.ContentTool\bin\Debug\net7.0\runtimes\unix\lib\netstandard1.0\SharpFont.FTTypes.dll</HintPath>
+      </Reference>
+    </ItemGroup>
 <!--    <ItemGroup>-->
 <!--        <SharpFontNativeFiles Visible="False" Include="$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/**/*.*" Condition="Exists('$(NuGetPackageRoot)sharpfont.dependencies/2.6.0/bin/msvc12/')" />-->
 
