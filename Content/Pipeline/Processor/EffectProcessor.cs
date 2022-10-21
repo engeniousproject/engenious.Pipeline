@@ -77,7 +77,7 @@ namespace engenious.Content.Pipeline
                         }
                     }
 
-                    lines[i] = file + "(" + errorLoc + "): " + lines[i];
+                    lines[i] = file + (string.IsNullOrWhiteSpace(errorLoc) ? ": " : "(" + errorLoc + "): ") + lines[i];
                 }
 
                 context.RaiseBuildMessage(file, lines[i], messageType);
@@ -1257,9 +1257,9 @@ namespace engenious.Content.Pipeline
 
                 return input;
             }
-            catch (FileNotFoundException ex)
+            catch (Exception ex)
             {
-                PreprocessMessage(context, Path.GetFileName(filename), ex.Message,
+                PreprocessMessage(context, filename, $"error: {ex.Message}",
                     BuildMessageEventArgs.BuildMessageType.Error);
             }
 

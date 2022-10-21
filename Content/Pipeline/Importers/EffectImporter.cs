@@ -16,7 +16,7 @@ namespace engenious.Content.Pipeline
     ///     <see cref="ContentImporter{T}"/> used to import <see cref="EffectContent"/> files from(.glsl).
     /// </summary>
     [ContentImporter(".glsl", DisplayName = "Effect Importer", DefaultProcessor = "EffectProcessor")]
-    public class EffectImporter : ContentImporter<EffectContent>
+    public class EffectImporter : ContentImporter<EffectContent, EffectContent>
     {
         #region implemented abstract members of ContentImporter
 
@@ -285,7 +285,18 @@ namespace engenious.Content.Pipeline
         }
 
         /// <inheritdoc />
-        public override EffectContent? Import(string filename, ContentImporterContext context)
+        public override EffectContent? Import(string filename, ContentImporterContext context, EffectContent? depContent)
+        {
+            return depContent ?? ImportOrDep(filename, context, context.Dependencies);
+        }
+
+        /// <inheritdoc />
+        public override EffectContent? DependencyImport(string filename, ContentImporterContext context, ICollection<string> dependencies)
+        {
+            return ImportOrDep(filename, context, dependencies);
+        }
+
+        private EffectContent? ImportOrDep(string filename, ContentImporterContext context, ICollection<string> dependencies)
         {
             try
             {
@@ -305,7 +316,7 @@ namespace engenious.Content.Pipeline
                 {
                     if (element.Name == "Technique")
                     {
-                        content.Techniques.Add(ParseTechnique(filename, context, element));
+                        content.Techniques.Add(ParseTechnique(filename, context, element, dependencies));
                     }
                     else if (element.Name == "Settings")
                     {
@@ -314,15 +325,21 @@ namespace engenious.Content.Pipeline
                     }
                     else
                     {
-                        ThrowXmlError("'" + element.Name + "' element not recognized: Expected 'Technique' or 'Settings'.", GetElementPosition(element));
+                        ThrowXmlError(
+                            "'" + element.Name + "' element not recognized: Expected 'Technique' or 'Settings'.",
+                            GetElementPosition(element));
                     }
                 }
 
                 return content;
             }
+            catch (XmlException ex)
+            {
+                context.RaiseBuildMessage(filename, $"{filename}({ex.LineNumber},{ex.LinePosition}): error: {ex.Message}", BuildMessageEventArgs.BuildMessageType.Error);
+            }
             catch (Exception ex)
             {
-                context.RaiseBuildMessage(filename, $"{filename}{ex.Message}", BuildMessageEventArgs.BuildMessageType.Error);
+                context.RaiseBuildMessage(filename, $"{filename}: error: {ex.Message}", BuildMessageEventArgs.BuildMessageType.Error);
             }
 
             return null;
@@ -369,7 +386,7 @@ namespace engenious.Content.Pipeline
                 }
             }
         }
-        private static EffectTechnique ParseTechnique(string filename, ContentImporterContext context, XElement technique)
+        private static EffectTechnique ParseTechnique(string filename, ContentImporterContext context, XElement technique, ICollection<string> dependencies)
         {
             EffectTechnique info = new EffectTechnique();
             var nameAttr = technique.Attribute("name");
@@ -382,7 +399,7 @@ namespace engenious.Content.Pipeline
             {
                 if (element.Name == "Pass")
                 {
-                    info.Passes.Add(ParsePass(filename, context, element));
+                    info.Passes.Add(ParsePass(filename, context, element, dependencies));
                 }
                 else if (element.Name == "Settings")
                 {
@@ -398,7 +415,7 @@ namespace engenious.Content.Pipeline
             return info;
         }
 
-        private static EffectPass ParsePass(string filename, ContentImporterContext context, XElement pass)
+        private static EffectPass ParsePass(string filename, ContentImporterContext context, XElement pass, ICollection<string> dependencies)
         {
             var nameAttr = pass.Attribute("name");
 
@@ -419,7 +436,7 @@ namespace engenious.Content.Pipeline
                     var dirName = Path.GetDirectoryName(filename);
                     string shaderFile = dirName == null ? fnAttr : Path.Combine(dirName, fnAttr);
                     pi.Shaders.Add(type, shaderFile);
-                    context.Dependencies.Add(shaderFile);
+                    dependencies.Add(shaderFile);
                 }
                 else if (sh.Name == "BlendState")
                 {
