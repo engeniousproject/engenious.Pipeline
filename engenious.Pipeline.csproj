@@ -12,11 +12,15 @@
         <LiCoOutput>NOTICE</LiCoOutput>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
     </PropertyGroup>
     <ItemGroup>
         <None Include="LICENSE" Pack="true" PackagePath="" />
     </ItemGroup>
     <ItemGroup>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
         <PackageReference Include="engenious.SharpFont" Version="4.0.6" />
         <PackageReference Include="engenious.SharpFont.Dependencies" Version="1.0.0" />
         <!--        <PackageReference Include="SharpFontStandard" Version="4.0.1" />-->
@@ -27,9 +31,9 @@
         <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta15" />
         <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
         <ProjectReference Include="..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj" Condition="Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
-        <PackageReference Include="engenious.Pipeline.Core" Version="0.7.1.1-alpha" Condition="!Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
+        <PackageReference Include="engenious.Pipeline.Core" Version="0.7.1.3-alpha" Condition="!Exists('..\engenious.Pipeline.Core\engenious.Pipeline.Core.csproj')" />
         <ProjectReference Include="..\engenious\engenious.csproj" Condition="Exists('..\engenious\engenious.csproj')" />
-        <PackageReference Include="engenious" Version="0.7.1-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
+        <PackageReference Include="engenious" Version="0.7.1.3-alpha" Condition="!Exists('..\engenious\engenious.csproj')" />
 
         <PackageReference Include="SixLabors.ImageSharp" Version="2.1.3" />
         <PackageReference Include="LitGit" Version="0.2.0.58-alpha" PrivateAssets="all" />
